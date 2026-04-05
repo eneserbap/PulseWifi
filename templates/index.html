@@ -1,80 +1,154 @@
-<div class="col-md-8">
-    <div class="card p-3">
-        <h5>Operasyon Merkezi</h5>
-        <div class="d-flex gap-2 mb-3">
-            <button id="scan-btn" class="btn btn-danger btn-lg flex-fill" onclick="runRadar()">RADAR'I BAŞLAT</button>
-            <button class="btn btn-warning btn-lg flex-fill">CHAOS MODU</button>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseWifi Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { background-color: #161b22; border: 1px solid #30363d; color: white; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .btn-pulse { background-color: #238636; color: white; border: none; }
+        .btn-pulse:hover { background-color: #2ea043; }
+        .navbar { border-bottom: 1px solid #30363d; background-color: #161b22 !important; }
+        .list-group-item { cursor: pointer; transition: 0.3s; }
+        .list-group-item:hover { background-color: #21262d !important; color: #58a6ff !important; }
+        .table-dark { --bs-table-bg: #161b22; }
+        .badge-vendor { font-size: 0.75rem; background-color: #30363d; color: #8b949e; }
+        #loader { display: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <span class="text-danger">PULSE</span> WIFI 
+                <span class="badge bg-info text-dark ms-2" style="font-size: 0.6rem;">v1.0-WEB</span>
+            </a>
+            <span class="text-secondary small">by EnesErbap</span>
         </div>
-        
-        <div class="table-responsive">
-            <table class="table table-dark table-hover" id="network-table" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>Sinyal</th>
-                        <th>SSID (Ağ Adı)</th>
-                        <th>Marka</th>
-                        <th>Kanal</th>
-                        <th>İşlem</th>
-                    </tr>
-                </thead>
-                <tbody id="network-body">
-                    </tbody>
-            </table>
-        </div>
-        <div id="loader" class="text-center" style="display: none;">
-            <div class="spinner-border text-danger" role="status"></div>
-            <p class="mt-2">Çevre taranıyor, bekleyin...</p>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <h6 class="text-secondary text-uppercase small fw-bold">Sistem Kontrolü</h6>
+                    <hr class="mt-1">
+                    <p class="mb-2">Adaptör: <span id="current-iface" class="text-warning fw-bold">Seçilmedi</span></p>
+                    <button class="btn btn-outline-info btn-sm w-100 mb-3" onclick="loadInterfaces()">Kartları Tara</button>
+                    <div id="interface-list" class="list-group list-group-flush border border-secondary rounded"></div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card p-3">
+                    <h6 class="text-secondary text-uppercase small fw-bold">Operasyon Merkezi</h6>
+                    <hr class="mt-1">
+                    <div class="d-flex gap-2 mb-4">
+                        <button id="scan-btn" class="btn btn-danger btn-lg flex-fill fw-bold" onclick="runRadar()">RADAR'I BAŞLAT</button>
+                        <button class="btn btn-warning btn-lg flex-fill fw-bold" onclick="alert('Chaos Modu Yakında!')">CHAOS MODU</button>
+                    </div>
+
+                    <div id="loader" class="text-center my-5">
+                        <div class="spinner-border text-danger" role="status" style="width: 3rem; height: 3rem;"></div>
+                        <p class="mt-3 text-info fw-bold">Çevre taranıyor... (10 Saniye)</p>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle" id="network-table" style="display: none;">
+                            <thead>
+                                <tr class="text-secondary small">
+                                    <th>SİNYAL</th>
+                                    <th>SSID (AĞ ADI)</th>
+                                    <th>MARKA</th>
+                                    <th>CH</th>
+                                    <th>İŞLEM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="network-body">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-let selectedIface = "";
+    <script>
+        let selectedIface = "";
 
-function selectIface(iface) {
-    selectedIface = iface;
-    document.getElementById('current-iface').innerText = iface;
-}
-
-function runRadar() {
-    if (!selectedIface) {
-        alert("Kanka önce sol panelden bir Wi-Fi kartı seç!");
-        return;
-    }
-
-    const table = document.getElementById('network-table');
-    const body = document.getElementById('network-body');
-    const loader = document.getElementById('loader');
-    const btn = document.getElementById('scan-btn');
-
-    // UI Hazırlığı
-    table.style.display = 'none';
-    loader.style.display = 'block';
-    btn.disabled = true;
-    body.innerHTML = '';
-
-    fetch(`/api/scan?iface=${selectedIface}`)
-        .then(res => res.json())
-        .then(data => {
-            loader.style.display = 'none';
-            btn.disabled = false;
-            
-            if (data.status === "success" && data.networks.length > 0) {
-                table.style.display = 'table';
-                data.networks.forEach(net => {
-                    // Senin radar.py'deki bar mantığını burada basitçe simüle edelim
-                    let row = `<tr>
-                        <td><span class="text-success">${net.dbm} dBm</span></td>
-                        <td><strong>${net.essid}</strong></td>
-                        <td><span class="badge bg-secondary">${net.vendor}</span></td>
-                        <td>${net.ch}</td>
-                        <td><button class="btn btn-sm btn-outline-danger" onclick="strikeTarget('${net.bssid}')">VUR</button></td>
-                    </tr>`;
-                    body.innerHTML += row;
+        // Sistemdeki Wi-Fi kartlarını getir
+        function loadInterfaces() {
+            fetch('/api/interfaces')
+                .then(res => res.json())
+                .then(data => {
+                    const list = document.getElementById('interface-list');
+                    list.innerHTML = '';
+                    data.interfaces.forEach(iface => {
+                        list.innerHTML += `<button class="list-group-item list-group-item-action bg-dark text-light border-secondary small" onclick="selectIface('${iface}')">${iface}</button>`;
+                    });
                 });
-            } else {
-                alert("Etrafta hiç ağ bulunamadı veya bir hata oluştu.");
+        }
+
+        // Kart seçimi
+        function selectIface(iface) {
+            selectedIface = iface;
+            document.getElementById('current-iface').innerText = iface;
+        }
+
+        // Radar taramasını başlat
+        function runRadar() {
+            if (!selectedIface) {
+                alert("Kanka önce sol panelden bir Wi-Fi kartı seçmelisin!");
+                return;
             }
-        });
-}
-</script>
+
+            const table = document.getElementById('network-table');
+            const body = document.getElementById('network-body');
+            const loader = document.getElementById('loader');
+            const btn = document.getElementById('scan-btn');
+
+            // Ekranı hazırla
+            table.style.display = 'none';
+            loader.style.display = 'block';
+            btn.disabled = true;
+            body.innerHTML = '';
+
+            // API'ye istek at
+            fetch(`/api/scan?iface=${selectedIface}`)
+                .then(res => res.json())
+                .then(data => {
+                    loader.style.display = 'none';
+                    btn.disabled = false;
+                    
+                    if (data.status === "success" && data.networks.length > 0) {
+                        table.style.display = 'table';
+                        data.networks.forEach(net => {
+                            let row = `
+                            <tr>
+                                <td><span class="text-success small fw-bold">${net.dbm} dBm</span></td>
+                                <td><span class="text-info">${net.essid}</span><br><small class="text-secondary" style="font-size:0.7rem;">${net.bssid}</small></td>
+                                <td><span class="badge badge-vendor">${net.vendor}</span></td>
+                                <td>${net.ch}</td>
+                                <td><button class="btn btn-sm btn-outline-danger" onclick="strikeTarget('${net.bssid}')">VUR</button></td>
+                            </tr>`;
+                            body.innerHTML += row;
+                        });
+                    } else {
+                        alert("Etrafta ağ bulunamadı veya adaptör hata verdi.");
+                    }
+                })
+                .catch(err => {
+                    alert("Sunucu hatası: " + err);
+                    loader.style.display = 'none';
+                    btn.disabled = false;
+                });
+        }
+
+        function strikeTarget(bssid) {
+            alert(bssid + " hedefine vuruş emri web üzerinden henüz bağlanmadı. Bir sonraki adımda bunu yapacağız!");
+        }
+    </script>
+</body>
+</html>
