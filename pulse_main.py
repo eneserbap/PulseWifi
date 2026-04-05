@@ -52,24 +52,27 @@ def engine_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Gizliliği Sağla (MAC Değiştir)     ",
-            f"{Colors.YELLOW}[2]{Colors.END} Monitor Modu KAPAT (Ağı Geri Al)   ",
-            f"{Colors.YELLOW}[0]{Colors.END} Geri                               "
+            f"{Colors.YELLOW}[1]{Colors.END} Monitör Modunu AÇ (Saldırı Hazırlığı) ",
+            f"{Colors.YELLOW}[2]{Colors.END} Monitör Modunu KAPAT (İnterneti Geri Al)",
+            f"{Colors.YELLOW}[0]{Colors.END} Ana Menüye Dön                    "
         ]
-        menu_box("ENGINE", opts)
+        menu_box("ENGINE - ADAPTÖR YÖNETİMİ", opts)
         sub = input(f"\n    {Colors.BOLD}Pulse/Engine #{Colors.END} ")
+        
         if sub == "1":
-            iface = select_interface()
+            iface = select_interface() # Sadece listedeki numarayı giriyorsun kanka
             if iface:
-                engine.change_mac(iface)
+                success, msg = engine.toggle_monitor(iface, "start")
+                print(msg)
                 time.sleep(2)
         elif sub == "2":
             iface = select_interface()
             if iface:
-                res, msg = engine.toggle_monitor(iface, "stop")
+                success, msg = engine.toggle_monitor(iface, "stop")
                 print(msg)
                 time.sleep(2)
-        elif sub == "0": break
+        elif sub == "0":
+            break
 
 def radar_ui():
     while True:
