@@ -145,7 +145,28 @@
                     btn.disabled = false;
                 });
         }
+function runRadar() {
+    // ... önceki kodlar ...
+    console.log("Tarama başlatılıyor: " + selectedIface); // Konsola yazdır
 
+    fetch(`/api/scan?iface=${selectedIface}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP hatası! Durum: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Gelen Veri:", data); // Gelen veriyi kontrol et
+            // ... tabloya basma kodları ...
+        })
+        .catch(error => {
+            console.error('Hata Detayı:', error);
+            alert("Bağlantı Hatası: Sunucuya ulaşılamadı veya tarama yarıda kesildi.");
+            loader.style.display = 'none';
+            btn.disabled = false;
+        });
+}
         function strikeTarget(bssid) {
             alert(bssid + " hedefine vuruş emri web üzerinden henüz bağlanmadı. Bir sonraki adımda bunu yapacağız!");
         }
