@@ -86,16 +86,20 @@ def radar_ui():
         menu_box("RADAR / KEŞİF", opts)
         sub = input(f"\n    Pulse/Radar # ")
         
+        # pulse_main.py içindeki ilgili kısım:
+
         if sub == "1":
             iface = select_interface()
             if iface:
-                # 15 saniye tara ve ağları bul
-                found_nets = radar.auto_scan(iface)
+                # HATALI YER BURASIYDI: radar.auto_scan yerine doğrusunu yazıyoruz
+                found_nets = radar.auto_scan_and_select(iface) 
                 
                 if not found_nets:
-                    print("    [!] Hiç ağ bulunamadı!")
+                    print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}")
                     time.sleep(2)
                     continue
+                
+                # ... geri kalan listeleme kodların ...
                 
                 # Listeyi ekrana bas
                 print(f"\n    {'ID':<4} {'SSID':<25} {'BSSID':<20} {'CH'}")
