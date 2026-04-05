@@ -116,7 +116,7 @@
             body.innerHTML = '';
 
             // API'ye istek at
-            fetch(`/api/scan?iface=${selectedIface}`)
+            fetch(`/api/scan?iface=${encodeURIComponent(selectedIface)}`)
                 .then(res => res.json())
                 .then(data => {
                     loader.style.display = 'none';
