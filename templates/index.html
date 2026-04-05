@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>PulseWifi | Web Kumanda</title>
+    <style>
+        body { 
+            background-color: #0a0a0a; 
+            color: #00ff00; 
+            font-family: 'Courier New', Courier, monospace; 
+            padding: 40px;
+        }
+        .kutu { 
+            border: 1px solid #00ff00; 
+            padding: 20px; 
+            width: 400px; 
+            border-radius: 5px;
+            box-shadow: 0 0 10px #00ff0055;
+        }
+        li { margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>[ 📡 ] PulseWifi Web Merkezi</h1>
+    
+    <div class="kutu">
+        <h3>Bağlı Adaptörler (Sistem Taraması)</h3>
+        <ul>
+            {% for iface in interfaces %}
+                <li>=> <b>{{ iface }}</b> (Hazır)</li>
+            {% else %}
+                <li style="color: red;">[!] Hiç Wi-Fi kartı bulunamadı.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</body>
+</html>
