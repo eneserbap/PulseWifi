@@ -1,31 +1,35 @@
 #!/bin/bash
 
-# Renk kodları (Görsellik önemli)
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
+# Renk kodları (Koyu Mavi yerine Parlak Cyan kullandık)
+GREEN='\033[1;32m'
+CYAN='\033[1;36m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}[*] PulseWifi Kurulum Sihirbazı Başlatılıyor...${NC}"
+echo -e "${CYAN}[*] PulseWifi Kurulum Sihirbazı Başlatılıyor...${NC}\n"
+
+# ==========================================
+# SESSİZ KURULUM AYARLARI
+# ==========================================
+echo "macchanger macchanger/auto boolean false" | sudo debconf-set-selections
 
 # 1. Sistem Güncelleme
-echo -e "${YELLOW}[1/4] Sistem paket listeleri güncelleniyor...${NC}"
-sudo apt update -y
+# -qq ve > /dev/null 2>&1 komutları ekrandaki tüm o çirkin logları yok eder
+echo -e "${YELLOW}[1/4] Sistem paket listeleri güncelleniyor... (Lütfen bekleyin)${NC}"
+sudo apt-get update -y -qq > /dev/null 2>&1
 
 # 2. Temel Siber Güvenlik Araçları
 echo -e "${YELLOW}[2/4] Kablosuz ağ araçları kuruluyor (Aircrack-ng, MDK3, MacChanger)...${NC}"
-# macchanger-gtk kurmuyoruz ki terminalde kalsın, mdk3 beacon spam için şart
-sudo apt install aircrack-ng mdk3 macchanger python3-pip -y
+sudo DEBIAN_FRONTEND=noninteractive apt-get install aircrack-ng mdk3 macchanger python3-pip -y -qq > /dev/null 2>&1
 
 # 3. Python Kütüphaneleri
 echo -e "${YELLOW}[3/4] Python bağımlılıkları yükleniyor...${NC}"
-# Flask'ı sildik dedin ama kurulumda olması zarar vermez, ileride açınca hazır olur
-sudo apt install python3-flask -y 2>/dev/null || pip3 install flask
+sudo apt-get install python3-flask -y -qq > /dev/null 2>&1 || pip3 install flask -q > /dev/null 2>&1
 
 # 4. Dosya İzinlerini Ayarlama
 echo -e "${YELLOW}[4/4] Çalıştırma izinleri tanımlanıyor...${NC}"
 chmod +x pulse_main.py
 chmod +x modules/*.py
 
-echo -e "${GREEN}[✔] PulseWifi başarıyla kuruldu!${NC}"
-echo -e "${BLUE}[*] Kullanım: sudo python3 pulse_main.py${NC}"
+echo -e "\n${GREEN}[✔] PulseWifi başarıyla kuruldu!${NC}"
+echo -e "${CYAN}[*] Kullanım: sudo python3 pulse_main.py${NC}"
