@@ -2,7 +2,7 @@ import os
 import time
 import sys
 import re
-from modules import engine, radar, strike, decrypt 
+from modules import engine, radar, strike, decrypt, eviltwin
 
 if os.name == 'posix' and os.geteuid() != 0:
     print("    [*] Linux tespit edildi. Root (sudo) yetkisine otomatik geçiliyor...")
@@ -127,17 +127,32 @@ def strike_ui():
             f"{Colors.YELLOW}[2]{Colors.END} Spesifik Cihazı Düşür (Targeted)",
             f"{Colors.YELLOW}[3]{Colors.END} Beacon Spam (Etrafa Sahte Ağlar Yay)",
             f"{Colors.YELLOW}[4]{Colors.END} Chaos Modu (Tam Otomatik Kitle İmha)",
+            f"{Colors.YELLOW}[5]{Colors.END} Evil Twin (Rogue AP & Captive Portal)",
             f"{Colors.YELLOW}[0]{Colors.END} Geri"
         ]
         menu_box("STRIKE - DEAUTH SALDIRISI", opts)
         sub = input(f"\n    {Colors.BOLD}Pulse/Strike #{Colors.END} ")
         
-        if sub in ["1", "2"]:
+        if sub in ["1", "2", "5"]:
             iface = select_interface()
             if not iface: continue
-            _, _, iface = engine.toggle_monitor(iface, "start")
+            
+            if sub == "5" and iface.endswith("mon"):
+                print(f"    {Colors.RED}[!] Evil Twin için adaptör Manage modunda (ör: wlan0) olmalıdır, 'mon' değil.{Colors.END}")
+                print(f"    {Colors.YELLOW}[*] 'Engine' menüsünden Monitör Modunu kapatıp tekrar gelin.{Colors.END}"); time.sleep(3); continue
+
+            if sub in ["1", "2"]:
+                _, _, iface = engine.toggle_monitor(iface, "start")
+
             print(f"\n    {Colors.CYAN}[*] Hedef seçimi için etraf taranıyor...{Colors.END}")
-            found_nets = radar.auto_scan_and_select(iface) 
+            if sub == "5":
+                # Evil Twin için geçici monitör aç-kapat izleme yapalım
+                _, _, mon_iface = engine.toggle_monitor(iface, "start")
+                found_nets = radar.auto_scan_and_select(mon_iface)
+                engine.toggle_monitor(mon_iface, "stop")
+            else:
+                found_nets = radar.auto_scan_and_select(iface) 
+                
             if not found_nets: continue
             
             print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<25} {'BSSID':<20} {'CH'}{Colors.END}")
@@ -145,15 +160,19 @@ def strike_ui():
                 bar = radar.get_signal_bar(net['dbm'])
                 print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:23]:<25} {net['bssid']:<20} {net['ch']}")
             
-            secim = input(f"\n    Hangi ağı düşürüyoruz? (0 ile {len(found_nets)-1} arası bir ID girin): ")
+            secim = input(f"\n    Hedef ağ (ID): ")
             if secim.isdigit() and int(secim) < len(found_nets):
                 target = found_nets[int(secim)]
-                engine.run_cmd(f"sudo iwconfig {iface} channel {target['ch']}")
-                client = input("    Düşürülecek Cihaz MAC (Boş bırakırsan ağdaki herkes düşer): ") if sub == "2" else None
-                timer = input("    Saldırı Süresi (Saniye, sınırsız için 0 veya Enter'a bas): ")
-                timer = int(timer) if timer.isdigit() else 0
-                strike.pulse_kick(iface, target['bssid'], client, timer)
-                input("\n    Devam etmek için Enter...")
+                if sub in ["1", "2"]:
+                    engine.run_cmd(f"sudo iwconfig {iface} channel {target['ch']}")
+                    client = input("    Düşürülecek Cihaz MAC (Boş bırakırsan ağdaki herkes düşer): ") if sub == "2" else None
+                    timer = input("    Saldırı Süresi (Saniye, sınırsız için 0 veya Enter'a bas): ")
+                    timer = int(timer) if timer.isdigit() else 0
+                    strike.pulse_kick(iface, target['bssid'], client, timer)
+                    input("\n    Devam etmek için Enter...")
+                elif sub == "5":
+                    eviltwin.start_evil_twin(iface, target['essid'], target['ch'])
+                    input("\n    Devam etmek için Enter...")
             else:
                 print("    [!] Geçersiz seçim. Lütfen listedeki numaralardan birini girin."); time.sleep(1.5)
         

@@ -18,12 +18,12 @@ echo -e "${YELLOW}[1/4] Sistem paket listeleri güncelleniyor... (Lütfen bekley
 sudo apt-get update -y -qq > /dev/null 2>&1
 
 # 2. Temel Siber Güvenlik Araçları
-echo -e "${YELLOW}[2/4] Kablosuz ağ araçları kuruluyor (Aircrack-ng, MDK3, MacChanger, Hashcat, Hcxtools)...${NC}"
-sudo DEBIAN_FRONTEND=noninteractive apt-get install aircrack-ng mdk3 macchanger hashcat hcxtools python3-pip -y -qq > /dev/null 2>&1
+echo -e "${YELLOW}[2/4] Kablosuz ağ araçları kuruluyor (Aircrack-ng, MDK3, MacChanger, Hashcat, Hcxtools, Hostapd, Dnsmasq)...${NC}"
+sudo DEBIAN_FRONTEND=noninteractive apt-get install aircrack-ng mdk3 macchanger hashcat hcxtools hostapd dnsmasq python3-pip -y -qq > /dev/null 2>&1
 
 # 3. Python Kütüphaneleri
 echo -e "${YELLOW}[3/4] Python bağımlılıkları yükleniyor...${NC}"
-sudo apt-get install python3-pip -y -qq > /dev/null 2>&1
+sudo apt-get install python3-pip python3-flask -y -qq > /dev/null 2>&1 || pip3 install flask -q > /dev/null 2>&1
 
 # 4. Dosya İzinlerini Ayarlama
 echo -e "${YELLOW}[4/4] Çalıştırma izinleri tanımlanıyor...${NC}"
