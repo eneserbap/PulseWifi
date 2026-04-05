@@ -1,7 +1,7 @@
 import os
 import time
 import sys
-from modules import engine, radar, strike, decrypt # DECRYPT EKLENDİ
+from modules import engine, radar, strike, decrypt 
 
 class Colors:
     BLUE = '\033[94m'
@@ -62,7 +62,6 @@ def engine_ui():
         if sub == "1":
             iface = select_interface()
             if iface:
-                # toggle_monitor artık (True/False, Mesaj) döndürüyor
                 status, msg = engine.toggle_monitor(iface, "start")
                 print(msg)
                 time.sleep(2)
@@ -84,14 +83,14 @@ def radar_ui():
             f"{Colors.YELLOW}[0]{Colors.END} Geri                               "
         ]
         menu_box("RADAR / KEŞİF", opts)
-        sub = input(f"\n    Pulse/Radar # ")
-        
-        # pulse_main.py içindeki ilgili kısım:
+        sub = input(f"\n    {Colors.BOLD}Pulse/Radar #{Colors.END} ")
 
         if sub == "1":
             iface = select_interface()
             if iface:
-                # HATALI YER BURASIYDI: radar.auto_scan yerine doğrusunu yazıyoruz
+                # Taramadan önce kartı emin olmak için monitör moduna alır
+                engine.toggle_monitor(iface, "start")
+                
                 found_nets = radar.auto_scan_and_select(iface) 
                 
                 if not found_nets:
@@ -99,29 +98,30 @@ def radar_ui():
                     time.sleep(2)
                     continue
                 
-                # ... geri kalan listeleme kodların ...
-                
-                # Listeyi ekrana bas
-                print(f"\n    {'ID':<4} {'SSID':<25} {'BSSID':<20} {'CH'}")
-                print("    " + "-"*55)
+                # Sinyal barlı şekilli liste! 'channel' değil 'ch' kullanıyoruz.
+                print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<25} {'BSSID':<20} {'CH'}{Colors.END}")
+                print("    " + "-"*75)
                 for i, net in enumerate(found_nets):
-                    print(f"    {i:<4} {net['essid'][:23]:<25} {net['bssid']:<20} {net['channel']}")
+                    bar = radar.get_signal_bar(net['dbm'])
+                    print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:23]:<25} {net['bssid']:<20} {net['ch']}")
                 
                 secim = input(f"\n    Hangi hedef? (ID girin): ")
                 if secim.isdigit() and int(secim) < len(found_nets):
                     target = found_nets[int(secim)]
                     print(f"    [✔] Seçilen: {target['essid']}")
                     
-                    # Artık BSSID ve Channel otomatik elimizde!
                     dosya_adi = input("    Kaydedilecek dosya adı (örneğin 'hedef1'): ")
-                    radar.target_lock(iface, target['bssid'], target['channel'], dosya_adi)
+                    # Burada da 'channel' yerine 'ch' düzelttik
+                    radar.target_lock(iface, target['bssid'], target['ch'], dosya_adi)
                 else:
                     print("    [!] Geçersiz seçim.")
+                    time.sleep(1)
 
         elif sub == "2":
-            # Eski manuel yöntem
             iface = select_interface()
-            if iface: radar.scan_all(iface)
+            if iface:
+                engine.toggle_monitor(iface, "start")
+                radar.scan_all(iface)
         elif sub == "0": break
 
 def strike_ui():
@@ -200,7 +200,6 @@ def main():
     except KeyboardInterrupt:
         print(f"\n    {Colors.RED}[!] Acil çıkış yapıldı!{Colors.END}")
     finally:
-        # Programdan çıkarken ne olursa olsun interneti geri getirir (Network Restorer)
         ifaces = engine.get_interfaces()
         if ifaces:
             engine.toggle_monitor(ifaces[0], "stop")
