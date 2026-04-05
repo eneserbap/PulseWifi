@@ -30,3 +30,15 @@ if __name__ == '__main__':
         print("[!] Lütfen web sunucusunu 'sudo' ile çalıştırın!")
     else:
         app.run(host='0.0.0.0', port=5000, debug=True)
+
+@app.route('/api/scan')
+def start_scan():
+    iface = request.args.get('iface')
+    if not iface:
+        return jsonify({"status": "error", "message": "Önce bir kart seçmelisin!"})
+    
+    # Senin radar modülündeki otomatik taramayı çağırıyoruz
+    print(f"[*] {iface} üzerinde web üzerinden tarama başlatıldı...")
+    found_nets = radar.auto_scan_and_select(iface, scan_time=10) # 10 saniye tara
+    
+    return jsonify({"status": "success", "networks": found_nets})
