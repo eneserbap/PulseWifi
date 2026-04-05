@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseWifi Dashboard</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --bg-main: #0d1117;
+            --bg-sidebar: #161b22;
+            --accent-red: #ff0000;
+            --accent-cyan: #00f0ff;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --glass-bg: rgba(22, 27, 34, 0.7);
+            --glass-border: rgba(0, 240, 255, 0.2);
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 80px;
+            background-color: var(--bg-sidebar);
+            height: 100vh;
+            position: fixed;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            z-index: 100;
+        }
+        .sidebar-icon {
+            color: var(--text-muted);
+            margin: 15px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .sidebar-icon:hover, .sidebar-icon.active {
+            color: var(--accent-cyan);
+            background: rgba(0, 240, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+
+        /* Topbar */
+        .topbar {
+            margin-left: 80px;
+            padding: 15px 30px;
+            background: var(--bg-sidebar);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: calc(100% - 80px);
+            position: fixed;
+            top: 0;
+            z-index: 99;
+            height: 70px;
+        }
+        .status-badge {
+            background: rgba(0, 240, 255, 0.05);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 5px 15px;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .status-badge.red {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+            background: rgba(255, 0, 0, 0.05);
+        }
+
+        /* Pulse Animation */
+        .pulse-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pulse-animation {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--accent-cyan);
+            box-shadow: 0 0 10px var(--accent-cyan);
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 240, 255, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 80px;
+            margin-top: 70px;
+            padding: 30px;
+            width: calc(100% - 80px);
+            height: calc(100vh - 70px);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: hidden;
+        }
+
+        /* Glassmorphism Panel */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .table {
+            color: var(--text-main);
+            margin-bottom: 0;
+            font-size: 1.05rem;
+            --bs-table-bg: transparent;
+        }
+        .table > :not(caption) > * > * {
+            background-color: transparent !important;
+        }
+        .table thead th {
+            border-bottom: 1px solid var(--glass-border);
+            color: var(--accent-cyan);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            padding-bottom: 15px;
+        }
+        .table tbody td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+            padding: 15px 8px;
+        }
+        .table tbody tr {
+            transition: background 0.2s;
+        }
+        .table tbody tr:hover {
+            background: rgba(0, 240, 255, 0.05);
+        }
+
+        /* Signal Bars */
+        .signal-bars {
+            display: flex;
+            gap: 4px;
+            align-items: flex-end;
+            height: 24px;
+        }
+        .bar {
+            width: 6px;
+            background-color: var(--text-muted);
+            border-radius: 1px;
+            transition: all 0.3s;
+        }
+        .bar.active { background-color: #00ff00; box-shadow: 0 0 5px #00ff00; }
+        .bar.active.warn { background-color: #ffff00; box-shadow: 0 0 5px #ffff00; }
+        .bar.active.danger { background-color: var(--accent-red); box-shadow: 0 0 5px var(--accent-red); }
+
+        .bar:nth-child(1) { height: 25%; }
+        .bar:nth-child(2) { height: 50%; }
+        .bar:nth-child(3) { height: 75%; }
+        .bar:nth-child(4) { height: 100%; }
+
+        /* Buttons */
+        .btn-cyber {
+            background: transparent;
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-cyber:hover {
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            border-color: var(--accent-cyan);
+        }
+        .btn-strike {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+        .btn-strike:hover {
+            background: rgba(255, 0, 0, 0.1);
+            color: var(--accent-red);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            border-color: var(--accent-red);
+        }
+
+        /* Chaos Terminal */
+        .chaos-terminal {
+            height: 220px;
+            background: #000;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            box-shadow: inset 0 0 20px rgba(0,255,0,0.05);
+        }
+        .log-line { margin: 0 0 5px 0; word-break: break-all; }
+        .log-info { color: #00ff00; }
+        .log-error { color: var(--accent-red); text-shadow: 0 0 5px rgba(255,0,0,0.5); }
+        .log-warn { color: #ffff00; }
+        .log-timestamp { color: var(--text-muted); margin-right: 10px; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-main); }
+        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; border: 1px solid var(--accent-cyan); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
+
+        /* Modal */
+        .modal-content.glass-modal {
+            background: var(--bg-sidebar);
+            border: 1px solid var(--accent-red);
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.15);
+            color: var(--text-main);
+            backdrop-filter: blur(20px);
+        }
+        .modal-header {
+            border-bottom: 1px solid rgba(255, 0, 0, 0.2);
+        }
+        .modal-footer {
+            border-top: 1px solid rgba(255, 0, 0, 0.2);
+        }
+        .form-control-cyber {
+            background: rgba(0,0,0,0.5) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            color: #fff !important;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .form-control-cyber:focus {
+            background: rgba(0,0,0,0.8) !important;
+            border-color: var(--accent-red) !important;
+            color: #fff !important;
+            box-shadow: 0 0 10px rgba(255,0,0,0.2) !important;
+        }
+
+        /* Utilities */
+        .mac-address { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; color: #a5b0ba; }
+        .spin { animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        .badge-vendor {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 4px;
+            color: var(--text-muted);
+        }
+
+        /* Scan Line Animation (Pure CSS) */
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 240, 255, 0.05) 51%, transparent 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="scan-overlay"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <!-- Pulse logo -->
+        <div style="color: var(--accent-red); margin-bottom: 30px; margin-top: 10px; text-shadow: 0 0 15px rgba(255,0,0,0.5);">
+            <i data-lucide="radio" width="36" height="36"></i>
+        </div>
+        <div class="sidebar-icon active" title="Radar"><i data-lucide="radar"></i></div>
+        <div class="sidebar-icon" title="Strike"><i data-lucide="zap"></i></div>
+        <div class="sidebar-icon" title="Decrypt"><i data-lucide="unlock"></i></div>
+        <div class="sidebar-icon" title="Engine"><i data-lucide="cpu"></i></div>
+    </div>
+
+    <!-- Topbar -->
+    <div class="topbar">
+        <div class="d-flex align-items-center gap-3">
+            <div class="pulse-container">
+                <div class="pulse-animation"></div>
+            </div>
+            <h3 class="mb-0 text-white" style="font-weight: 700; letter-spacing: 3px; font-family: 'Rajdhani', sans-serif;">
+                PULSE<span style="color: var(--accent-red)">WIFI</span>
+            </h3>
+        </div>
+        
+        <div class="d-flex gap-3">
+            <div class="status-badge" id="monitorBtn" data-status="on" onclick="toggleMonitor()" style="cursor: pointer; transition: all 0.3s;">
+                <i data-lucide="wifi" width="18" height="18"></i> <span id="interfaceText">wlan0mon (Monitor)</span>
+            </div>
+            <div class="status-badge">
+                <i data-lucide="shield" width="18" height="18"></i> <span style="font-family: 'JetBrains Mono'">MAC: 00:11:22:33:44:55 (Spoofed)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0" style="color: var(--accent-cyan); font-weight: 600;">
+                <i data-lucide="crosshair" class="me-2 text-white"></i> Radar View: Target Acquisition
+            </h4>
+            <button class="btn-cyber" id="scanBtn" onclick="startScan()">
+                <i data-lucide="radar"></i> Scan Area
+            </button>
+        </div>
+        
+        <div class="glass-panel">
+            <table class="table table-borderless">
+                <thead>
+                    <tr>
+                        <th>PWR</th>
+                        <th>SSID</th>
+                        <th>Vendor</th>
+                        <th>BSSID</th>
+                        <th>CH</th>
+                        <th>ENC</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="wifiTableBody">
+                    <tr>
+                        <td style="width: 80px;">
+                            <div class="signal-bars">
+                                <div class="bar active"></div><div class="bar active"></div><div class="bar active"></div><div class="bar active"></div>
+                            </div>
+                        </td>
+                        <td class="text-white fw-bold">Starbucks_WiFi</td>
+                        <td><span class="badge-vendor">Cisco</span></td>
+                        <td class="mac-address">AA:BB:CC:DD:EE:11</td>
+                        <td>6</td>
+                        <td style="color: #00ff00;">WPA2</td>
+                        <td class="text-end">
+                            <button class="btn-cyber btn-strike" onclick="openAttackModal('Starbucks_WiFi', 'AA:BB:CC:DD:EE:11')">
+                                <i data-lucide="crosshair" width="16" height="16"></i> Strike
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="signal-bars">
+                                <div class="bar active warn"></div><div class="bar active warn"></div><div class="bar active warn"></div><div class="bar"></div>
+                            </div>
+                        </td>
+                        <td class="text-white fw-bold">Home_Network_5G</td>
+                        <td><span class="badge-vendor">Netgear</span></td>
+                        <td class="mac-address">11:22:33:44:55:66</td>
+                        <td>36</td>
+                        <td style="color: #00ff00;">WPA3</td>
+                        <td class="text-end">
+                            <button class="btn-cyber btn-strike" onclick="openAttackModal('Home_Network_5G', '11:22:33:44:55:66')">
+                                <i data-lucide="crosshair" width="16" height="16"></i> Strike
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="signal-bars">
+                                <div class="bar active danger"></div><div class="bar active danger"></div><div class="bar"></div><div class="bar"></div>
+                            </div>
+                        </td>
+                        <td class="text-white fw-bold">Guest_Access</td>
+                        <td><span class="badge-vendor">TP-Link</span></td>
+                        <td class="mac-address">FF:EE:DD:CC:BB:AA</td>
+                        <td>11</td>
+                        <td style="color: var(--accent-red);">Open</td>
+                        <td class="text-end">
+                            <button class="btn-cyber btn-strike" onclick="openAttackModal('Guest_Access', 'FF:EE:DD:CC:BB:AA')">
+                                <i data-lucide="crosshair" width="16" height="16"></i> Strike
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Chaos Mode Terminal -->
+        <div>
+            <h6 style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px;">
+                <i data-lucide="terminal" width="16" height="16" class="me-2"></i>Chaos Console
+            </h6>
+            <div class="chaos-terminal" id="chaosTerminal">
+                <!-- Logs will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Attack Modal -->
+    <div class="modal fade" id="attackModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title" style="color: var(--accent-red); font-weight: 700; letter-spacing: 1px;">
+                        <i data-lucide="zap" class="me-2"></i>Configure Strike
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <p class="mb-1 text-muted">Target SSID: <strong id="modalTargetSSID" class="text-white fs-5 ms-2"></strong></p>
+                        <p class="mb-0 text-muted">Target BSSID: <span id="modalTargetBSSID" class="mac-address ms-2"></span></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Attack Vector</label>
+                        <select class="form-select form-control-cyber" id="attackType">
+                            <option value="Deauth (Broadcast)">Deauth (Broadcast) - Disconnect all clients</option>
+                            <option value="Deauth (Targeted)">Deauth (Targeted) - Disconnect specific client</option>
+                            <option value="Beacon Flood">Beacon Flood - Create fake APs</option>
+                            <option value="WPA Handshake Capture">WPA Handshake Capture - Listen for 4-way</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Duration (Seconds)</label>
+                        <input type="number" class="form-control form-control-cyber" id="attackDuration" value="60">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cyber" style="border-color: var(--text-muted); color: var(--text-main);" data-bs-dismiss="modal">Abort</button>
+                    <button type="button" class="btn-cyber btn-strike" onclick="launchAttack()">
+                        <i data-lucide="flame"></i> Execute Payload
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        const terminal = document.getElementById('chaosTerminal');
+        
+        function getTimestamp() {
+            const now = new Date();
+            return now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+        }
+
+        function logToTerminal(message, type = 'info') {
+            const line = document.createElement('div');
+            line.className = `log-line log-${type}`;
+            
+            const timestampSpan = document.createElement('span');
+            timestampSpan.className = 'log-timestamp';
+            timestampSpan.textContent = `[${getTimestamp()}]`;
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.innerHTML = message;
+
+            line.appendChild(timestampSpan);
+            line.appendChild(messageSpan);
+            
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Add boot sequence
+        setTimeout(() => logToTerminal('PulseWifi System UI Initialized...', 'info'), 500);
+        setTimeout(() => logToTerminal('Verifying connection to Python backend...', 'info'), 1000);
+
+        // Fetch Initial System Status
+        fetch('/api/status')
+            .then(res => res.json())
+            .then(data => {
+                logToTerminal(`Interface ${data.interface} bound securely.`, 'info');
+                logToTerminal('Awaiting instructions.', 'warn');
+                
+                const btn = document.getElementById('monitorBtn');
+                if (data.is_monitor) {
+                    btn.setAttribute('data-status', 'on');
+                    document.getElementById('interfaceText').textContent = `${data.interface} (Monitor)`;
+                    btn.classList.remove('red');
+                } else {
+                    btn.setAttribute('data-status', 'off');
+                    document.getElementById('interfaceText').textContent = `${data.interface} (Managed)`;
+                    btn.classList.add('red');
+                }
+            })
+            .catch(err => logToTerminal('Backend not responding! Are you running web_server.py?', 'error'));
+
+        // Dinamik Sinyal BAR HTML'i Üretici
+        function getSignalHtml(dbm) {
+            let num = parseInt(dbm);
+            if (isNaN(num) || num === -1 || num === 0) num = -100;
+            
+            let html = '<div class="signal-bars">';
+            if (num > -60) {
+                html += '<div class="bar active"></div><div class="bar active"></div><div class="bar active"></div><div class="bar active"></div>';
+            } else if (num > -75) {
+                html += '<div class="bar active warn"></div><div class="bar active warn"></div><div class="bar active warn"></div><div class="bar"></div>';
+            } else {
+                html += '<div class="bar active danger"></div><div class="bar active danger"></div><div class="bar"></div><div class="bar"></div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // Encrypt type belirleme (basit simulasyon/varsayılan)
+        function getEncryptionHtml(net) {
+            // Airodump çıktısında encryption açık/kapalı veya wpa olabilir.
+            // Örnekte basit tutuyoruz
+            return '<td style="color: #00ff00;">WPA2/3</td>';
+        }
+
+        function startScan() {
+            const btn = document.getElementById('scanBtn');
+            btn.innerHTML = '<i data-lucide="loader" class="spin" width="20" height="20"></i> Scanning Airspace';
+            lucide.createIcons();
+            
+            logToTerminal('Initializing active scan on interface...', 'info');
+            logToTerminal('Sweeping channels 1-14 (2.4GHz) and 36-165 (5GHz). Estimated 15s...', 'warn');
+            
+            const tbody = document.getElementById('wifiTableBody');
+            tbody.style.opacity = '0.3';
+            
+            fetch('/api/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scan_time: 15 })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const nets = data.networks;
+                    logToTerminal(`Scan complete. Discovered ${nets.length} targets nearby.`, 'info');
+                    
+                    tbody.innerHTML = '';
+                    nets.forEach(net => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="width: 80px;">${getSignalHtml(net.dbm)}</td>
+                            <td class="text-white fw-bold">${net.essid}</td>
+                            <td><span class="badge-vendor">${net.vendor || 'Unknown'}</span></td>
+                            <td class="mac-address">${net.bssid}</td>
+                            <td>${net.ch}</td>
+                            ${getEncryptionHtml()}
+                            <td class="text-end">
+                                <button class="btn-cyber btn-strike" onclick="openAttackModal('${net.essid}', '${net.bssid}')">
+                                    <i data-lucide="crosshair" width="16" height="16"></i> Strike
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    lucide.createIcons();
+                } else {
+                    logToTerminal(`Scan failed: ${data.message}`, 'error');
+                }
+            })
+            .catch(err => {
+                logToTerminal(`Error during scan: ${err.message}`, 'error');
+            })
+            .finally(() => {
+                btn.innerHTML = '<i data-lucide="radar" width="20" height="20"></i> Scan Area';
+                lucide.createIcons();
+                tbody.style.opacity = '1';
+            });
+        }
+
+        function toggleMonitor() {
+            const btn = document.getElementById('monitorBtn');
+            const isMon = btn.getAttribute('data-status') === 'on';
+            const action = isMon ? 'stop' : 'start';
+            
+            logToTerminal(`Requesting interface state change to ${action}...`, 'warn');
+            
+            fetch('/api/monitor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: action })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (data.is_monitor) {
+                        btn.setAttribute('data-status', 'on');
+                        document.getElementById('interfaceText').textContent = `${data.interface} (Monitor)`;
+                        btn.classList.remove('red');
+                        logToTerminal(`Interface up... ${data.interface} is active in Monitor Mode.`, 'info');
+                    } else {
+                        btn.setAttribute('data-status', 'off');
+                        document.getElementById('interfaceText').textContent = `${data.interface} (Managed)`;
+                        btn.classList.add('red');
+                        logToTerminal(`Interface up... ${data.interface} set to Managed mode.`, 'warn');
+                    }
+                } else {
+                    logToTerminal(`Failed to toggle monitor: ${data.message}`, 'error');
+                }
+            })
+            .catch(err => logToTerminal('Connection error.', 'error'));
+        }
+
+        let currentTarget = { ssid: '', bssid: '' };
+        let attackModalInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            attackModalInstance = new bootstrap.Modal(document.getElementById('attackModal'));
+        });
+
+        function openAttackModal(ssid, bssid) {
+            currentTarget = { ssid, bssid };
+            document.getElementById('modalTargetSSID').textContent = ssid;
+            document.getElementById('modalTargetBSSID').textContent = bssid;
+            attackModalInstance.show();
+        }
+
+        function launchAttack() {
+            const attackType = document.getElementById('attackType').value;
+            const duration = document.getElementById('attackDuration').value;
+            
+            attackModalInstance.hide();
+            
+            logToTerminal(`--------------------------------------------------`, 'warn');
+            logToTerminal(`<b>CRITICAL: Deploying Payload > ${attackType} vector against ${currentTarget.ssid}</b>`, 'error');
+            logToTerminal(`Target BSSID: ${currentTarget.bssid}`, 'error');
+            logToTerminal(`Estimated duration: ${duration}s`, 'warn');
+            logToTerminal(`--------------------------------------------------`, 'warn');
+            
+            fetch('/api/attack', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bssid: currentTarget.bssid,
+                    type: attackType,
+                    duration: duration
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    logToTerminal(`[API] Server confirmed attack execution. Monitoring...`, 'info');
+                    
+                    let counter = 0;
+                    const estimated_secs = parseInt(duration);
+                    
+                    const attackInterval = setInterval(() => {
+                        if (counter >= estimated_secs || counter >= 60) {
+                            clearInterval(attackInterval);
+                            logToTerminal(`Attack sequence completed or timed out for ${currentTarget.ssid}.`, 'info');
+                            return;
+                        }
+                        logToTerminal(`[PAYLOAD] Sending deauth packets to ${currentTarget.bssid}...`, 'error');
+                        counter += 2; // print every 2 loops for simplicity
+                    }, 2000);
+                } else {
+                    logToTerminal(`[API] Attack failed: ${data.message}`, 'error');
+                }
+            })
+            .catch(err => logToTerminal('Connection error during attack.', 'error'));
+        }
+    </script>
+</body>
+</html>
