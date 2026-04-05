@@ -1,27 +1,21 @@
 import subprocess
 
 def run_cmd(command):
-    """Komutu çalıştırır ve çıktıları gizler (Temiz ekran için)."""
     try:
+        # Hataları yakalamak için capture_output kullanıyoruz
         subprocess.run(command, shell=True, check=True, capture_output=True)
         return True
-    except:
+    except subprocess.CalledProcessError:
         return False
 
 def toggle_monitor(interface, mode="start"):
-    """Modu 'start' (Monitör) veya 'stop' (Managed) yapar."""
     if mode == "start":
-        # airmon-ng ile kartı aç ve çakışan süreçleri öldür
+        # check kill eklemek bağlantı hatalarını önler
         cmd = f"sudo airmon-ng start {interface} && sudo airmon-ng check kill"
+        msg = f"{interface} Monitör moduna alındı."
     else:
-        # Kartı kapat ve internet servislerini geri getir
         cmd = f"sudo airmon-ng stop {interface} && sudo service network-manager restart"
+        msg = "Managed moda dönüldü, internet servisleri geri yüklendi."
     
-    return run_cmd(cmd)
-
-def list_interfaces():
-    """Sistemdeki kartları bulur."""
-    cmd = "iwconfig"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    # Burada basitçe çıktıyı dönebiliriz, ileride regex ile güzelleştiririz
-    return result.stdout
+    success = run_cmd(cmd)
+    return success, msg

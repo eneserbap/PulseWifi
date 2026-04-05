@@ -1,8 +1,8 @@
 import os
 import time
+import sys
 from modules import engine, radar, strike
 
-# Renkler (Her dosyada kullanabilirsin)
 class Colors:
     BLUE = '\033[94m'
     GREEN = '\033[92m'
@@ -13,7 +13,7 @@ class Colors:
     CYAN = '\033[96m'
 
 def banner():
-    os.system('clear')
+    os.system('clear') # Linux için
     print(f"{Colors.BLUE}{Colors.BOLD}")
     print(r"""
   _____  _    _ _       _____ ______  __          _______ ______ _____ 
@@ -25,54 +25,97 @@ def banner():
     print(f"{' ' * 51}{Colors.CYAN}by EnesErbap{Colors.END}")
     print(f"{Colors.BLUE}    " + "═" * 62 + f"{Colors.END}")
 
-def main_menu():
-    while True: # İŞTE BURASI: Programın kapanmasını engelleyen ana döngü
+def menu_box(title, options):
+    print(f"\n{Colors.BOLD}    ╔═══════════════ {title.upper()} ═══════════════╗{Colors.END}")
+    print(f"    ║                                            ║")
+    for opt in options:
+        # Renk kodları yüzünden manuel hizalama
+        print(f"    ║  {opt} ║")
+    print(f"    ║                                            ║")
+    print(f"{Colors.BOLD}    ╚════════════════════════════════════════════╝{Colors.END}")
+
+def main():
+    while True:
         banner()
-        print(f"\n{Colors.BOLD}    ╔═══════════════════ ANA MENÜ ═══════════════════╗{Colors.END}")
-        print(f"    ║                                            ║")
-        print(f"    ║  {Colors.YELLOW}[1]{Colors.END} RADAR  (Ağ Tarama & Keşif)          ║")
-        print(f"    ║  {Colors.YELLOW}[2]{Colors.END} STRIKE (Saldırı & Paket Yakalama)    ║")
-        print(f"    ║  {Colors.YELLOW}[3]{Colors.END} ENGINE (Adaptör & Monitör Modu)     ║")
-        print(f"    ║  {Colors.YELLOW}[0]{Colors.END} Çıkış                              ║")
-        print(f"    ║                                            ║")
-        print(f"{Colors.BOLD}    ╚════════════════════════════════════════════╝{Colors.END}")
+        opts = [
+            f"{Colors.YELLOW}[1]{Colors.END} RADAR  (Ağ Tarama)               ",
+            f"{Colors.YELLOW}[2]{Colors.END} STRIKE (Saldırı Modu)            ",
+            f"{Colors.YELLOW}[3]{Colors.END} ENGINE (Adaptör Ayarları)        ",
+            f"{Colors.YELLOW}[0]{Colors.END} Çıkış                            "
+        ]
+        menu_box("KATEGORİLER", opts)
         
         choice = input(f"\n    {Colors.BOLD}Pulse #{Colors.END} ")
 
         if choice == "1":
-            radar_submenu() # Radar menüsüne dallan
+            radar_ui()
         elif choice == "2":
-            strike_submenu() # Strike menüsüne dallan
+            strike_ui()
         elif choice == "3":
-            engine_submenu() # Engine menüsüne dallan
+            engine_ui()
         elif choice == "0":
-            print(f"\n    {Colors.BLUE}[*] Pulse kesiliyor... Güle güle!{Colors.END}")
-            break # Döngüden çık ve programı kapat
-        else:
-            print(f"    {Colors.RED}[!] Geçersiz seçim!{Colors.END}")
-            time.sleep(1)
-
-# Alt Menü Örneği (Diğerleri için de benzerini yapabilirsin)
-def engine_submenu():
-    while True:
-        banner()
-        print(f"    {Colors.CYAN}Kategori: ENGINE (Sistem){Colors.END}")
-        print(f"\n    ╔════════════════════════════════════════════╗")
-        print(f"    ║  {Colors.YELLOW}[1]{Colors.END} Monitor Modu AÇ                   ║")
-        print(f"    ║  {Colors.YELLOW}[2]{Colors.END} Monitor Modu KAPAT                ║")
-        print(f"    ║  {Colors.YELLOW}[0]{Colors.END} Ana Menüye Dön                    ║")
-        print(f"    ╚════════════════════════════════════════════╝")
-        
-        sub_choice = input(f"\n    {Colors.BOLD}Pulse/Engine #{Colors.END} ")
-        
-        if sub_choice == "1":
-            iface = input("    Kart: ")
-            engine.toggle_monitor(iface, mode="start")
-        elif sub_choice == "2":
-            iface = input("    Kart: ")
-            engine.toggle_monitor(iface, mode="stop")
-        elif sub_choice == "0":
+            print(f"\n    {Colors.BLUE}[*] Pulse kesildi.{Colors.END}")
             break
 
+def engine_ui():
+    while True:
+        banner()
+        opts = [
+            f"{Colors.YELLOW}[1]{Colors.END} Monitor Modu AÇ                  ",
+            f"{Colors.YELLOW}[2]{Colors.END} Monitor Modu KAPAT               ",
+            f"{Colors.YELLOW}[0]{Colors.END} Geri                             "
+        ]
+        menu_box("ENGINE", opts)
+        sub = input(f"\n    Pulse/Engine # ")
+        if sub == "1":
+            iface = input("    Arayüz (wlan0): ")
+            res, msg = engine.toggle_monitor(iface, "start")
+            print(f"    {msg}")
+            time.sleep(2)
+        elif sub == "2":
+            iface = input("    Arayüz (wlan0mon): ")
+            res, msg = engine.toggle_monitor(iface, "stop")
+            print(f"    {msg}")
+            time.sleep(2)
+        elif sub == "0": break
+
+def radar_ui():
+    while True:
+        banner()
+        opts = [
+            f"{Colors.YELLOW}[1]{Colors.END} Tüm Ağları Tara                  ",
+            f"{Colors.YELLOW}[2]{Colors.END} Hedefe Kilitlen                  ",
+            f"{Colors.YELLOW}[0]{Colors.END} Geri                             "
+        ]
+        menu_box("RADAR", opts)
+        sub = input(f"\n    Pulse/Radar # ")
+        if sub == "1":
+            iface = input("    Kart (wlan0mon): ")
+            radar.scan_all(iface)
+        elif sub == "2":
+            iface = input("    Kart: ")
+            bssid = input("    BSSID: ")
+            ch = input("    Kanal: ")
+            name = input("    Dosya Adı: ")
+            radar.target_lock(iface, bssid, ch, name)
+        elif sub == "0": break
+
+def strike_ui():
+    while True:
+        banner()
+        opts = [
+            f"{Colors.YELLOW}[1]{Colors.END} Pulse Kick (Deauth)              ",
+            f"{Colors.YELLOW}[0]{Colors.END} Geri                             "
+        ]
+        menu_box("STRIKE", opts)
+        sub = input(f"\n    Pulse/Strike # ")
+        if sub == "1":
+            iface = input("    Kart: ")
+            bssid = input("    BSSID: ")
+            client = input("    Cihaz MAC (Boş bırakılabilir): ")
+            strike.pulse_kick(iface, bssid, client if client else None)
+            input("\n    Devam etmek için Enter...")
+        elif sub == "0": break
+
 if __name__ == "__main__":
-    main_menu()
+    main()

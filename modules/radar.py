@@ -1,22 +1,18 @@
 import subprocess
-import os
 
-def scan_all_networks(interface):
-    """Etraftaki tüm ağları canlı olarak tarar."""
-    print(f"\n    [*] Tarama başlatılıyor... Durdurmak için [CTRL+C]")
+def scan_all(interface):
+    print(f"\n    [*] Tarama yapılıyor... Durdurmak için [CTRL+C]")
     try:
-        # -M seçeneği üretici isimlerini de gösterir
-        cmd = f"sudo airodump-ng {interface} -M"
-        subprocess.run(cmd, shell=True)
+        # -M üretici ismini gösterir, daha profesyonel durur
+        subprocess.run(f"sudo airodump-ng {interface} -M", shell=True)
     except KeyboardInterrupt:
-        print(f"\n    [!] Tarama durduruldu.")
+        print(f"\n    [!] Tarama bitti.")
 
-def target_scan(interface, bssid, channel, output_name):
-    """Sadece seçilen bir ağa odaklanır ve handshake bekler."""
-    print(f"\n    [*] {bssid} hedefine kilitlenildi (Kanal: {channel})")
-    # -w ile yakalanan paketleri dosyaya kaydederiz
-    cmd = f"sudo airodump-ng --bssid {bssid} -c {channel} -w {output_name} {interface}"
+def target_lock(interface, bssid, channel, file_name):
+    print(f"\n    [*] {bssid} hedefine kilitlenildi. Handshake bekleniyor...")
+    # Yakalanan paketleri dosyaya yazar
+    cmd = f"sudo airodump-ng --bssid {bssid} -c {channel} -w {file_name} {interface}"
     try:
         subprocess.run(cmd, shell=True)
     except KeyboardInterrupt:
-        print(f"\n    [!] Dinleme modu kapatıldı.")
+        print(f"\n    [!] Dinleme durduruldu. Dosyalar kaydedildi.")
