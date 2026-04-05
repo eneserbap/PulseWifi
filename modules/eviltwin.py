@@ -155,9 +155,11 @@ address=/#/10.0.0.1
     time.sleep(3)
     
     # Hostapd başlatılırken hata var mı yok mu detaylı yazdır
-    print(f"\n    {'\033[93m'}[HOSTAPD BAŞLATMA LOGLARI]{'\033[0m'}")
-    os.system("head -n 5 /tmp/hostapd.log | sed 's/^/        /'")
-    print(f"    {'\033[93m'}{'-'*30}{'\033[0m'}\n")
+    color_yellow = '\033[93m'
+    color_end = '\033[0m'
+    print(f"\n    {color_yellow}[HOSTAPD BAŞLATMA LOGLARI]{color_end}")
+    os.system("head -n 5 /tmp/hostapd.log | awk '{print \"        \" $0}'")
+    print(f"    {color_yellow}{'-'*30}{color_end}\n")
     
     # Eğer hostapd hemen çöktüyse kullanıcıyı uyar
     if ap_proc.poll() is not None:
