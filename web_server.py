@@ -123,6 +123,63 @@ def launch_attack():
         "duration": duration
     })
 
+from modules import decrypt
+
+@app.route('/api/system/interfaces', methods=['GET'])
+def get_interfaces():
+    ifaces = engine.get_interfaces()
+    return jsonify({
+        "status": "success",
+        "interfaces": ifaces
+    })
+
+@app.route('/api/engine/mac', methods=['POST'])
+def spoof_mac():
+    data = request.json or {}
+    action = data.get('action', 'random') # 'random' or 'reset'
+    
+    current_iface = get_default_iface()
+    try:
+        engine.change_mac(current_iface, action)
+        msg = "Gerçek kimliğe geri dönüldü." if action == "reset" else "Rastgele sahte kimlik atandı (Spoofed)."
+        return jsonify({"status": "success", "message": msg})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/decrypt', methods=['POST'])
+def start_decrypt():
+    data = request.json or {}
+    engine_type = data.get('engine', 'cpu') # 'cpu' (aircrack) or 'gpu' (hashcat) or 'brute'
+    cap_file = data.get('cap_file', '')
+    
+    if not cap_file:
+        return jsonify({"status": "error", "message": ".cap dosyası belirtilmedi."}), 400
+
+    def run_decrypt():
+        print(f"[*] Arka planda şifre kılıcı tetiklendi: {engine_type}")
+        try:
+            if engine_type == 'cpu':
+                wordlist = data.get('wordlist', '/usr/share/wordlists/rockyou.txt')
+                decrypt.wordlist_attack(cap_file, wordlist)
+            elif engine_type == 'gpu':
+                wordlist = data.get('wordlist', '/usr/share/wordlists/rockyou.txt')
+                decrypt.hashcat_attack(cap_file, wordlist)
+            elif engine_type == 'brute':
+                essid = data.get('essid', 'unknown')
+                charset = data.get('charset', '0123456789')
+                length = int(data.get('length', 8))
+                decrypt.brute_force(cap_file, essid, charset, length)
+        except Exception as e:
+            print(f"[!] Kırma işlemi başarısız: {e}")
+
+    t = threading.Thread(target=run_decrypt)
+    t.start()
+    
+    return jsonify({
+        "status": "success",
+        "message": f"Şifre kırma motoru ({engine_type}) başlatıldı."
+    })
+
 if __name__ == '__main__':
     # 0.0.0.0 sayesinde sadece localhost değil ağdaki diğer cihazlardan da panele erişebilirsiniz.
     app.run(host='0.0.0.0', port=5000)
