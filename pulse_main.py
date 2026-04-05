@@ -213,18 +213,18 @@ def main():
         while True:
             banner()
             opts = [
-                f"{Colors.YELLOW}[1]{Colors.END} RADAR   (Keşif & Hedef Seçimi)",
-                f"{Colors.YELLOW}[2]{Colors.END} STRIKE  (Saldırı & Deauth)",
-                f"{Colors.YELLOW}[3]{Colors.END} DECRYPT (Şifre Kırma & Analiz)",
-                f"{Colors.YELLOW}[4]{Colors.END} ENGINE  (Sistem & Gizlilik)",
+                f"{Colors.YELLOW}[1]{Colors.END} ENGINE  (Sistem & Gizlilik)",
+                f"{Colors.YELLOW}[2]{Colors.END} RADAR   (Keşif & Hedef Seçimi)",
+                f"{Colors.YELLOW}[3]{Colors.END} STRIKE  (Saldırı & Deauth)",
+                f"{Colors.YELLOW}[4]{Colors.END} DECRYPT (Şifre Kırma & Analiz)",
                 f"{Colors.YELLOW}[0]{Colors.END} Çıkış"
             ]
-            menu_box("KATEGORİLER", opts)
+            menu_box("KATEGORİLER (Önerilen Akış Sırası)", opts)
             choice = input(f"\n    {Colors.BOLD}Pulse #{Colors.END} ")
-            if choice == "1": radar_ui()
-            elif choice == "2": strike_ui()
-            elif choice == "3": decrypt_ui()
-            elif choice == "4": engine_ui()
+            if choice == "1": engine_ui()
+            elif choice == "2": radar_ui()
+            elif choice == "3": strike_ui()
+            elif choice == "4": decrypt_ui()
             elif choice == "0": print(f"\n    {Colors.BLUE}[*] Pulse kesiliyor... Ağ ayarları onarılıyor...{Colors.END}"); break
     except KeyboardInterrupt: print(f"\n    {Colors.RED}[!] Acil çıkış yapıldı! Ağ ayarları kurtarılıyor...{Colors.END}")
     finally:
