@@ -19,3 +19,13 @@ def toggle_monitor(interface, mode="start"):
     
     success = run_cmd(cmd)
     return success, msg
+
+def get_interfaces():
+    """Sistemdeki Wi-Fi arayüzlerini listeler."""
+    interfaces = []
+    # /sys/class/net dizini sistemdeki tüm ağ kartlarını tutar
+    for iface in os.listdir('/sys/class/net'):
+        # Kablosuz kartların içinde genellikle 'wireless' klasörü olur
+        if os.path.exists(f'/sys/class/net/{iface}/wireless'):
+            interfaces.append(iface)
+    return interfaces

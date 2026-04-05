@@ -13,7 +13,7 @@ class Colors:
     CYAN = '\033[96m'
 
 def banner():
-    os.system('clear') # Linux için
+    os.system('clear') 
     print(f"{Colors.BLUE}{Colors.BOLD}")
     print(r"""
   _____  _    _ _       _____ ______  __          _______ ______ _____ 
@@ -29,7 +29,7 @@ def menu_box(title, options):
     print(f"\n{Colors.BOLD}    ╔═══════════════ {title.upper()} ═══════════════╗{Colors.END}")
     print(f"    ║                                            ║")
     for opt in options:
-        # Renk kodları yüzünden manuel hizalama
+        
         print(f"    ║  {opt} ║")
     print(f"    ║                                            ║")
     print(f"{Colors.BOLD}    ╚════════════════════════════════════════════╝{Colors.END}")
@@ -117,5 +117,42 @@ def strike_ui():
             input("\n    Devam etmek için Enter...")
         elif sub == "0": break
 
+# pulse_main.py içinde uygun bir yere ekle:
+
+def select_interface():
+    ifaces = engine.get_interfaces()
+    
+    if not ifaces:
+        print(f"    {Colors.RED}[!] Hiç Wi-Fi kartı bulunamadı!{Colors.END}")
+        input(f"\n    Devam etmek için Enter...")
+        return None
+
+    print(f"\n    {Colors.BOLD}[*] Mevcut Wi-Fi Kartları:{Colors.END}")
+    for i, name in enumerate(ifaces):
+        print(f"    {Colors.YELLOW}[{i}]{Colors.END} {name}")
+    
+    try:
+        secim = int(input(f"\n    {Colors.CYAN}Pulse/Iface #{Colors.END} "))
+        return ifaces[secim]
+    except (ValueError, IndexError):
+        print(f"    {Colors.RED}[!] Geçersiz seçim!{Colors.END}")
+        time.sleep(1)
+        return None
+
+# ÖRNEK KULLANIM (Radar UI içinde):
+def radar_ui():
+    while True:
+        banner()
+        # ... menü seçenekleri ...
+        sub = input(f"\n    Pulse/Radar # ")
+        
+        if sub == "1":
+            # ESKİ: iface = input("Kart adı:")
+            # YENİ:
+            iface = select_interface()
+            if iface:
+                radar.scan_all(iface)
+                
 if __name__ == "__main__":
     main()
+
