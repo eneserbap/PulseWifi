@@ -1,7 +1,15 @@
 import os
 import time
 import sys
+import re
 from modules import engine, radar, strike, decrypt 
+
+# ==========================================
+# AUTO-SUDO: Otomatik Root Yetkisi Alma
+# ==========================================
+if os.name == 'posix' and os.geteuid() != 0:
+    print("    [*] Linux tespit edildi. Root (sudo) yetkisine otomatik geçiliyor...")
+    os.execvp("sudo", ["sudo", sys.executable] + sys.argv)
 
 class Colors:
     BLUE = '\033[94m'
@@ -25,13 +33,29 @@ def banner():
     print(f"{' ' * 51}{Colors.CYAN}by EnesErbap{Colors.END}")
     print(f"{Colors.BLUE}    " + "═" * 62 + f"{Colors.END}")
 
+# ==========================================
+# MILIMETRIK KUTU ALGORITMASI
+# ==========================================
+def strip_colors(text):
+    """Renk kodlarını temizler ki uzunluğu doğru ölçelim."""
+    return re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', text)
+
 def menu_box(title, options):
-    print(f"\n{Colors.BOLD}    ╔═══════════════ {title.upper()} ═══════════════╗{Colors.END}")
-    print(f"    ║                                            ║")
+    width = 62 # Kutunun sabit genişliği
+    clean_title = strip_colors(title)
+    
+    # Başlığı ortalamak için boşluk hesabı
+    pad_l = (width - len(clean_title) - 2) // 2
+    pad_r = width - len(clean_title) - 2 - pad_l
+    
+    print(f"\n{Colors.BOLD}    ╔{'═' * pad_l} {title} {'═' * pad_r}╗{Colors.END}")
+    print(f"    ║{' ' * width}║")
     for opt in options:
-        print(f"    ║  {opt} ║")
-    print(f"    ║                                            ║")
-    print(f"{Colors.BOLD}    ╚════════════════════════════════════════════╝{Colors.END}")
+        clean_opt = strip_colors(opt)
+        spaces = width - len(clean_opt) - 2 # Sona eklenecek boşluklar
+        print(f"    ║ {opt}{' ' * spaces} ║")
+    print(f"    ║{' ' * width}║")
+    print(f"{Colors.BOLD}    ╚{'═' * width}╝{Colors.END}")
 
 def select_interface():
     ifaces = engine.get_interfaces()
@@ -52,35 +76,31 @@ def engine_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Monitör Modunu AÇ (Saldırı Hazırlığı) ",
+            f"{Colors.YELLOW}[1]{Colors.END} Monitör Modunu AÇ (Saldırı Hazırlığı)",
             f"{Colors.YELLOW}[2]{Colors.END} Monitör Modunu KAPAT (İnterneti Geri Al)",
-            f"{Colors.YELLOW}[0]{Colors.END} Ana Menüye Dön                    "
+            f"{Colors.YELLOW}[0]{Colors.END} Ana Menüye Dön"
         ]
         menu_box("ENGINE - ADAPTÖR YÖNETİMİ", opts)
         sub = input(f"\n    {Colors.BOLD}Pulse/Engine #{Colors.END} ")
-        
         if sub == "1":
             iface = select_interface()
             if iface:
                 status, msg = engine.toggle_monitor(iface, "start")
-                print(msg)
-                time.sleep(2)
+                print(msg); time.sleep(2)
         elif sub == "2":
             iface = select_interface()
             if iface:
                 success, msg = engine.toggle_monitor(iface, "stop")
-                print(msg)
-                time.sleep(2)
-        elif sub == "0":
-            break
+                print(msg); time.sleep(2)
+        elif sub == "0": break
 
 def radar_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Otomatik Hedef Seç (Tavsiye)      ",
-            f"{Colors.YELLOW}[2]{Colors.END} Canlı İzleme (Manuel)              ",
-            f"{Colors.YELLOW}[0]{Colors.END} Geri                               "
+            f"{Colors.YELLOW}[1]{Colors.END} Otomatik Hedef Seç (Tavsiye)",
+            f"{Colors.YELLOW}[2]{Colors.END} Canlı İzleme (Manuel)",
+            f"{Colors.YELLOW}[0]{Colors.END} Geri"
         ]
         menu_box("RADAR / KEŞİF", opts)
         sub = input(f"\n    {Colors.BOLD}Pulse/Radar #{Colors.END} ")
@@ -88,17 +108,11 @@ def radar_ui():
         if sub == "1":
             iface = select_interface()
             if iface:
-                # Taramadan önce kartı emin olmak için monitör moduna alır
                 engine.toggle_monitor(iface, "start")
-                
                 found_nets = radar.auto_scan_and_select(iface) 
-                
                 if not found_nets:
-                    print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}")
-                    time.sleep(2)
-                    continue
+                    print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}"); time.sleep(2); continue
                 
-                # Sinyal barlı şekilli liste! 'channel' değil 'ch' kullanıyoruz.
                 print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<25} {'BSSID':<20} {'CH'}{Colors.END}")
                 print("    " + "-"*75)
                 for i, net in enumerate(found_nets):
@@ -109,28 +123,22 @@ def radar_ui():
                 if secim.isdigit() and int(secim) < len(found_nets):
                     target = found_nets[int(secim)]
                     print(f"    [✔] Seçilen: {target['essid']}")
-                    
                     dosya_adi = input("    Kaydedilecek dosya adı (örneğin 'hedef1'): ")
-                    # Burada da 'channel' yerine 'ch' düzelttik
                     radar.target_lock(iface, target['bssid'], target['ch'], dosya_adi)
-                else:
-                    print("    [!] Geçersiz seçim.")
-                    time.sleep(1)
-
+                else: print("    [!] Geçersiz seçim."); time.sleep(1)
         elif sub == "2":
             iface = select_interface()
-            if iface:
-                engine.toggle_monitor(iface, "start")
-                radar.scan_all(iface)
+            if iface: engine.toggle_monitor(iface, "start"); radar.scan_all(iface)
         elif sub == "0": break
 
 def strike_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Ağdaki Herkesi Düşür (Broadcast)   ",
-            f"{Colors.YELLOW}[2]{Colors.END} Spesifik Cihazı Düşür (Targeted)   ",
-            f"{Colors.YELLOW}[0]{Colors.END} Geri                               "
+            f"{Colors.YELLOW}[1]{Colors.END} Ağdaki Herkesi Düşür (Broadcast)",
+            f"{Colors.YELLOW}[2]{Colors.END} Spesifik Cihazı Düşür (Targeted)",
+            f"{Colors.YELLOW}[3]{Colors.END} Beacon Spam (Etrafa Sahte Ağlar Yay)",
+            f"{Colors.YELLOW}[0]{Colors.END} Geri"
         ]
         menu_box("STRIKE - DEAUTH SALDIRISI", opts)
         sub = input(f"\n    {Colors.BOLD}Pulse/Strike #{Colors.END} ")
@@ -138,19 +146,12 @@ def strike_ui():
         if sub == "1" or sub == "2":
             iface = select_interface()
             if not iface: continue
-            
             engine.toggle_monitor(iface, "start")
-            
             print(f"\n    {Colors.CYAN}[*] Hedef seçimi için etraf taranıyor...{Colors.END}")
             found_nets = radar.auto_scan_and_select(iface) 
-            
-            if not found_nets:
-                print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}")
-                time.sleep(2)
-                continue
+            if not found_nets: continue
             
             print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<25} {'BSSID':<20} {'CH'}{Colors.END}")
-            print("    " + "-"*75)
             for i, net in enumerate(found_nets):
                 bar = radar.get_signal_bar(net['dbm'])
                 print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:23]:<25} {net['bssid']:<20} {net['ch']}")
@@ -158,53 +159,37 @@ def strike_ui():
             secim = input(f"\n    Hangi ağı düşürüyoruz? (ID girin): ")
             if secim.isdigit() and int(secim) < len(found_nets):
                 target = found_nets[int(secim)]
-                bssid = target['bssid']
-                ch = target['ch'] # HEDEFİN KANALINI ALDIK
-                
-                print(f"    [✔] Hedef Kilitlendi: {target['essid']} ({bssid}) - Kanal: {ch}")
-                
-                # İŞTE SİHİRLİ DOKUNUŞ: KARTIN KANALINI HEDEFE SABİTLE!
-                engine.run_cmd(f"sudo iwconfig {iface} channel {ch}")
-                
+                engine.run_cmd(f"sudo iwconfig {iface} channel {target['ch']}")
                 client = input("    Düşürülecek Cihaz MAC (Boş bırakırsan ağdaki herkes düşer): ") if sub == "2" else None
-                
-                timer_str = input("    Saldırı Süresi (Saniye, sınırsız için 0): ")
-                timer = int(timer_str) if timer_str.isdigit() else 0
-                
-                strike.pulse_kick(iface, bssid, client, timer)
+                timer = int(input("    Saldırı Süresi (Saniye, sınırsız için 0): ") or 0)
+                strike.pulse_kick(iface, target['bssid'], client, timer)
                 input("\n    Devam etmek için Enter...")
-            else:
-                print("    [!] Geçersiz seçim.")
-                time.sleep(1)
-                
+        
+        # YENI BEACON SPAM MENÜSÜ
+        elif sub == "3":
+            iface = select_interface()
+            if iface:
+                engine.toggle_monitor(iface, "start")
+                strike.beacon_spam(iface)
+                input("\n    Devam etmek için Enter...")
         elif sub == "0": break
 
 def decrypt_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Wordlist İle Kır (rockyou.txt)     ",
-            f"{Colors.YELLOW}[2]{Colors.END} Smart Brute (Sadece Rakamlar vb.)  ",
-            f"{Colors.YELLOW}[3]{Colors.END} Handshake Doğrula                  ",
-            f"{Colors.YELLOW}[0]{Colors.END} Geri                               "
+            f"{Colors.YELLOW}[1]{Colors.END} Wordlist İle Kır (rockyou.txt)",
+            f"{Colors.YELLOW}[2]{Colors.END} Smart Brute (Sadece Rakamlar vb.)",
+            f"{Colors.YELLOW}[3]{Colors.END} Handshake Doğrula",
+            f"{Colors.YELLOW}[0]{Colors.END} Geri"
         ]
         menu_box("DECRYPT", opts)
         sub = input(f"\n    {Colors.BOLD}Pulse/Decrypt #{Colors.END} ")
-        
-        if sub == "1" or sub == "2" or sub == "3":
+        if sub in ["1", "2", "3"]:
             cap = input("    .cap Dosyasının Yolu: ")
-            
-            if sub == "1":
-                wl = input("    Wordlist Yolu (/usr/share/wordlists/rockyou.txt): ")
-                decrypt.wordlist_attack(cap, wl or "/usr/share/wordlists/rockyou.txt")
-            elif sub == "2":
-                essid = input("    Hedef Ağın Adı (ESSID): ")
-                uzunluk = input("    Şifre Uzunluğu (Örn: 8): ") or 8
-                karakter = input("    Karakter Seti (Örn: 0123456789): ") or "0123456789"
-                decrypt.brute_force(cap, essid, karakter, int(uzunluk))
-            elif sub == "3":
-                strike.verify_handshake(cap)
-            
+            if sub == "1": decrypt.wordlist_attack(cap, input("    Wordlist Yolu: ") or "/usr/share/wordlists/rockyou.txt")
+            elif sub == "2": decrypt.brute_force(cap, input("    Hedef Ağın Adı (ESSID): "), input("    Karakter Seti (Örn: 0123456789): ") or "0123456789", int(input("    Şifre Uzunluğu (Örn: 8): ") or 8))
+            elif sub == "3": strike.verify_handshake(cap)
             input("\n    Devam etmek için Enter...")
         elif sub == "0": break
 
@@ -213,28 +198,23 @@ def main():
         while True:
             banner()
             opts = [
-                f"{Colors.YELLOW}[1]{Colors.END} RADAR   (Keşif & Hedef Seçimi)    ",
-                f"{Colors.YELLOW}[2]{Colors.END} STRIKE  (Saldırı & Deauth)        ",
-                f"{Colors.YELLOW}[3]{Colors.END} DECRYPT (Şifre Kırma & Analiz)    ",
-                f"{Colors.YELLOW}[4]{Colors.END} ENGINE  (Sistem & Gizlilik)       ",
-                f"{Colors.YELLOW}[0]{Colors.END} Çıkış                             "
+                f"{Colors.YELLOW}[1]{Colors.END} RADAR   (Keşif & Hedef Seçimi)",
+                f"{Colors.YELLOW}[2]{Colors.END} STRIKE  (Saldırı & Deauth)",
+                f"{Colors.YELLOW}[3]{Colors.END} DECRYPT (Şifre Kırma & Analiz)",
+                f"{Colors.YELLOW}[4]{Colors.END} ENGINE  (Sistem & Gizlilik)",
+                f"{Colors.YELLOW}[0]{Colors.END} Çıkış"
             ]
             menu_box("KATEGORİLER", opts)
             choice = input(f"\n    {Colors.BOLD}Pulse #{Colors.END} ")
-
             if choice == "1": radar_ui()
             elif choice == "2": strike_ui()
             elif choice == "3": decrypt_ui()
             elif choice == "4": engine_ui()
-            elif choice == "0":
-                print(f"\n    {Colors.BLUE}[*] Pulse kesiliyor... Ağ ayarları onarılıyor...{Colors.END}")
-                break
-    except KeyboardInterrupt:
-        print(f"\n    {Colors.RED}[!] Acil çıkış yapıldı!{Colors.END}")
+            elif choice == "0": print(f"\n    {Colors.BLUE}[*] Pulse kesiliyor... Ağ ayarları onarılıyor...{Colors.END}"); break
+    except KeyboardInterrupt: print(f"\n    {Colors.RED}[!] Acil çıkış yapıldı!{Colors.END}")
     finally:
         ifaces = engine.get_interfaces()
-        if ifaces:
-            engine.toggle_monitor(ifaces[0], "stop")
+        if ifaces: engine.toggle_monitor(ifaces[0], "stop")
 
 if __name__ == "__main__":
     main()
