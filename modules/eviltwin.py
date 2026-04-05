@@ -4,10 +4,21 @@ import time
 import threading
 
 def cleanup():
-    print("\n    [!] Arkaplan servisleri temizleniyor...")
+    print("\n    [!] Arkaplan servisleri temizleniyor, ağ kalıntıları onarılıyor...")
+    # DNS, DHCP ve Sahte AP servislerini öldür
     os.system("killall hostapd dnsmasq 2>/dev/null")
     os.system("rm -f /tmp/hostapd.conf /tmp/dnsmasq.conf 2>/dev/null")
+    
+    # Iptables yönlendirmelerini (Captive Portal kalıntılarını) sıfırla
+    os.system("echo 0 > /proc/sys/net/ipv4/ip_forward 2>/dev/null")
+    os.system("iptables -F 2>/dev/null")
+    os.system("iptables -t nat -F 2>/dev/null")
+    
+    # İnternet bağlantısını (NetworkManager) tam anlamıyla yeniden kur
     os.system("systemctl start NetworkManager 2>/dev/null")
+    os.system("nmcli networking on 2>/dev/null")
+    
+    print("    [\033[92m✔\033[0m] Ağ kartınız ve internet bağlantınız orijinal haline getirildi.")
 
 def launch_flask_portal(ssid):
     # Flask sunucusunu izole bir web servisi gibi başlatır
