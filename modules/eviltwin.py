@@ -142,6 +142,10 @@ ignore_broadcast_ssid=0
 
     # 4. dnsmasq konfigürasyonu (Captive portal DNS hijacking)
     dnsmasq_conf = f"""interface={iface}
+bind-interfaces
+server=8.8.8.8
+domain-needed
+bogus-priv
 dhcp-range=10.0.0.10,10.0.0.250,12h
 dhcp-option=3,10.0.0.1
 dhcp-option=6,10.0.0.1
