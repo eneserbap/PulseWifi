@@ -21,6 +21,30 @@ def get_signal_bar(dbm):
     except:
         return "[--Hata---]"
 
+# ==========================================
+# YENİ: İSTİHBARAT MODELİ (CİHAZ MARKASI BULUCU)
+# ==========================================
+def get_vendor(mac):
+    """MAC adresinin ilk 6 hanesinden cihaz markasını çevrimdışı (offline) bulur."""
+    prefix = mac.upper().replace(':', '')[:6]
+    # Macchanger'ın sistemdeki kendi sözlüğünü kullanıyoruz (İnternet gerektirmez!)
+    paths = ['/usr/share/macchanger/OUI.list', '/var/lib/ieee-data/oui.txt']
+    
+    for path in paths:
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        if prefix in line:
+                            # Örn: "000000  Xerox Corporation" -> Sadece "Xerox" kısmını al
+                            parts = line.strip().split(maxsplit=1)
+                            if len(parts) > 1:
+                                marka = parts[1].replace(',', '').split()[0]
+                                return marka[:12] # Ekrana sığması için en fazla 12 karakter
+            except:
+                continue
+    return "Bilinmiyor"
+
 def auto_scan_and_select(iface, scan_time=15):
     """Arka planda tarar ve bulunan ağları bir liste olarak döner."""
     print(f"\n    [*] Hızlı keşif başlatıldı, {scan_time} saniye çevre dinleniyor...")
@@ -58,28 +82,22 @@ def auto_scan_and_select(iface, scan_time=15):
                             'bssid': bssid, 
                             'ch': ch, 
                             'dbm': dbm, 
-                            'essid': essid
+                            'essid': essid,
+                            'vendor': get_vendor(bssid) # YENİ: Markayı listeye dahil ettik
                         })
     except Exception as e:
         print(f"    [!] Veri işlenirken hata oluştu: {e}")
         
-    # ==========================================
-    # SİNYAL GÜCÜNE GÖRE SIRALAMA ALGORİTMASI
-    # ==========================================
     def sort_by_signal(net):
         try:
             val = int(net['dbm'].strip())
-            # Airodump bazen sinyalini tam ölçemediği ağlara '-1' yazar. 
-            # Bunları listenin en dibine atmak için -100 gibi küçük bir değer atıyoruz.
             if val == -1 or val == 0:
                 return -100
             return val
         except:
             return -100
             
-    # Listeyi en güçlü sinyalden (-30) en zayıfa (-90) doğru sırala
     networks.sort(key=sort_by_signal, reverse=True)
-    
     return networks
 
 def target_lock(iface, bssid, channel, file_name):
@@ -91,4 +109,4 @@ def target_lock(iface, bssid, channel, file_name):
     try:
         subprocess.run(cmd, shell=True)
     except KeyboardInterrupt:
-        print(f"\n    [✔] Dinleme bitti. '{file_name}' dosyaları hazır.")
+        print(f"\n    [✔] Dinleme bitti. '{file_name}-01.cap' dosyası şu anki klasörde seni bekliyor.")

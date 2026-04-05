@@ -16,7 +16,6 @@ def is_monitor(iface):
     if success and "Mode:Monitor" in out: return True
     return False
 
-# YENI: Değişen ismi yakalayan akıllı radar
 def get_real_iface(iface):
     if os.path.exists('/sys/class/net/' + iface + 'mon'):
         return iface + 'mon'
@@ -29,11 +28,9 @@ def toggle_monitor(iface, mode="start"):
             run_cmd("sudo airmon-ng check kill")
             run_cmd("sudo airmon-ng start " + iface)
         
-        # Kartın ismi wlan0mon olduysa onu alıyoruz
         yeni_isim = get_real_iface(iface)
         
         if is_monitor(yeni_isim):
-            # Artık 3 değer döndürüyoruz (Durum, Mesaj, YENİ İSİM)
             return True, "    [✔] " + yeni_isim + " Monitör modunda.", yeni_isim
         else:
             return False, "    [✘] Mod değiştirilemedi.", yeni_isim
@@ -54,3 +51,21 @@ def get_interfaces():
                 interfaces.append(iface)
     except: pass
     return interfaces
+
+# ==========================================
+# YENİ: GİZLİLİK KALKANI (MAC SPOOFING)
+# ==========================================
+def change_mac(iface, mode="random"):
+    print(f"\n    [*] Ağ kartı ({iface}) geçici olarak kapatılıyor...")
+    run_cmd(f"sudo ip link set {iface} down")
+    
+    if mode == "random":
+        print("    [*] Gizlilik Kalkanı Aktif: Rastgele sahte bir MAC adresi üretiliyor...")
+        run_cmd(f"sudo macchanger -r {iface}")
+    elif mode == "reset":
+        print("    [*] Kalkan Kapatılıyor: Orijinal fabrika MAC adresine dönülüyor...")
+        run_cmd(f"sudo macchanger -p {iface}")
+        
+    print(f"    [*] Ağ kartı tekrar ayağa kaldırılıyor...")
+    run_cmd(f"sudo ip link set {iface} up")
+    return True
