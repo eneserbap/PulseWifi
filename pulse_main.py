@@ -1,6 +1,5 @@
 import os
 import time
-import sys
 from modules import engine, radar, strike
 
 class Colors:
@@ -13,8 +12,8 @@ class Colors:
     CYAN = '\033[96m'
 
 def banner():
-    # Burada os modülünü kullanıyoruz, o yüzden en tepede import os şart!
-    os.system('clear') 
+    # Hem Windows (cls) hem Linux (clear) için uyumlu hale getirildi
+    os.system('clear' if os.name == 'posix' else 'cls') 
     print(f"{Colors.BLUE}{Colors.BOLD}")
     print(r"""
   _____  _    _ _       _____ ______  __          _______ ______ _____ 
@@ -35,11 +34,10 @@ def menu_box(title, options):
     print(f"{Colors.BOLD}    ╚════════════════════════════════════════════╝{Colors.END}")
 
 def select_interface():
-    # Bu fonksiyon engine.py içindeki get_interfaces'i kullanır
     ifaces = engine.get_interfaces()
     
     if not ifaces:
-        print(f"    {Colors.RED}[!] Hiç Wi-Fi kartı bulunamadı!{Colors.END}")
+        print(f"    {Colors.RED}[!] Hiç Wi-Fi kartı bulunamadı! (Linux'ta olduğundan emin ol){Colors.END}")
         input(f"\n    Devam etmek için Enter...")
         return None
 
@@ -64,18 +62,18 @@ def engine_ui():
             f"{Colors.YELLOW}[0]{Colors.END} Geri                             "
         ]
         menu_box("ENGINE", opts)
-        sub = input(f"\n    Pulse/Engine # ")
+        sub = input(f"\n    {Colors.BOLD}Pulse/Engine #{Colors.END} ")
         if sub == "1":
             iface = select_interface()
             if iface:
                 res, msg = engine.toggle_monitor(iface, "start")
-                print(f"    {msg}")
+                print(f"\n{msg}")
                 time.sleep(2)
         elif sub == "2":
             iface = select_interface()
             if iface:
                 res, msg = engine.toggle_monitor(iface, "stop")
-                print(f"    {msg}")
+                print(f"\n{msg}")
                 time.sleep(2)
         elif sub == "0": break
 
@@ -100,8 +98,8 @@ def radar_ui():
         elif sub == "2":
             iface = select_interface()
             if iface:
-                bssid = input("    BSSID: ")
-                ch = input("    Kanal: ")
+                bssid = input("    BSSID (MAC): ")
+                ch = input("    Kanal (CH): ")
                 name = input("    Dosya Adı: ")
                 radar.target_lock(iface, bssid, ch, name)
         elif sub == "0": break
@@ -114,18 +112,18 @@ def strike_ui():
             f"{Colors.YELLOW}[0]{Colors.END} Geri                             "
         ]
         menu_box("STRIKE", opts)
-        sub = input(f"\n    Pulse/Strike # ")
+        sub = input(f"\n    {Colors.BOLD}Pulse/Strike #{Colors.END} ")
         if sub == "1":
             iface = select_interface()
             if iface:
-                bssid = input("    BSSID: ")
-                client = input("    Cihaz MAC (Boş bırakılabilir): ")
+                bssid = input("    Hedef Ağ BSSID: ")
+                client = input("    Cihaz MAC (Boş bırakırsan tüm ağ düşer): ")
                 strike.pulse_kick(iface, bssid, client if client else None)
                 input("\n    Devam etmek için Enter...")
         elif sub == "0": break
 
 def main():
-<    while True:
+    while True: # HATALI '<' İŞARETİ BURADAN SİLİNDİ
         banner()
         opts = [
             f"{Colors.YELLOW}[1]{Colors.END} RADAR  (Ağ Tarama)               ",
@@ -147,4 +145,4 @@ def main():
             break
 
 if __name__ == "__main__":
-    main()  
+    main()
