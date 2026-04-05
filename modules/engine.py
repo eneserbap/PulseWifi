@@ -3,43 +3,53 @@ import os
 
 def run_cmd(command):
     try:
-        # stderr'i de yakalıyoruz ki hata varsa görelim
-        res = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+        # capture_output yerine eski/garanti yöntem olan PIPE kullanıyoruz
+        res = subprocess.run(
+            command, 
+            shell=True, 
+            check=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            text=True
+        )
         return True, res.stdout
     except subprocess.CalledProcessError as e:
         return False, e.stderr
+    except Exception as e:
+        return False, str(e)
 
 def is_monitor(iface):
     success, out = run_cmd(f"iwconfig {iface}")
-    return "Mode:Monitor" in out
+    if success and "Mode:Monitor" in out:
+        return True
+    return False
 
 def toggle_monitor(iface, mode="start"):
     if mode == "start":
         if not is_monitor(iface):
-            print(f"    [*] Süreçler temizleniyor ve {iface} mod değiştiriyor...")
+            print(f"    [*] Hazırlanıyor: {iface}")
+            # Önce çakışan servisleri durdur
             run_cmd("sudo airmon-ng check kill")
+            # Modu başlat
             success, err = run_cmd(f"sudo airmon-ng start {iface}")
             if success:
-                return True, f"    [✔] {iface} Monitör moduna alındı."
-            return False, f"    [✘] Hata: {err}"
+                return True, f"    [✔] {iface} Monitör moduna geçti."
+            else:
+                return False, f"    [✘] Mod değiştirme başarısız: {err}"
         return True, f"    [*] {iface} zaten Monitör modunda."
     else:
-        # KAPATMA HATASI ÇÖZÜMÜ: airmon-ng bazen kart ismini bulamazsa hata verir
         print(f"    [*] Monitör modu kapatılıyor...")
-        success, err = run_cmd(f"sudo airmon-ng stop {iface}")
-        
-        # İnternet servislerini her durumda ayağa kaldır
-        run_cmd("sudo systemctl restart NetworkManager") 
+        # airmon-ng stop komutu bazen isme takılır, o yüzden en garanti yol
+        run_cmd(f"sudo airmon-ng stop {iface}")
+        # Servisleri canlandır
+        run_cmd("sudo systemctl restart NetworkManager")
         run_cmd("sudo systemctl restart wpa_supplicant")
-        
-        if success:
-            return True, "    [✔] Managed moda dönüldü, internet servisleri canlandırıldı."
-        else:
-            return False, f"    [!] Uyarı: {err} (Ancak servisler yine de sıfırlandı)."
+        return True, "    [✔] İnternet servisleri geri yüklendi."
 
 def get_interfaces():
     interfaces = []
     try:
+        # Linux dizininden kartları çekiyoruz
         for iface in os.listdir('/sys/class/net'):
             if os.path.exists(f'/sys/class/net/{iface}/wireless'):
                 interfaces.append(iface)

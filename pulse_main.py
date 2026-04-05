@@ -60,9 +60,10 @@ def engine_ui():
         sub = input(f"\n    {Colors.BOLD}Pulse/Engine #{Colors.END} ")
         
         if sub == "1":
-            iface = select_interface() # Sadece listedeki numarayı giriyorsun kanka
+            iface = select_interface()
             if iface:
-                success, msg = engine.toggle_monitor(iface, "start")
+                # toggle_monitor artık (True/False, Mesaj) döndürüyor
+                status, msg = engine.toggle_monitor(iface, "start")
                 print(msg)
                 time.sleep(2)
         elif sub == "2":
