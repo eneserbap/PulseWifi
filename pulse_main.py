@@ -139,20 +139,36 @@ def select_interface():
         time.sleep(1)
         return None
 
-# ÖRNEK KULLANIM (Radar UI içinde):
 def radar_ui():
     while True:
         banner()
-        # ... menü seçenekleri ...
-        sub = input(f"\n    Pulse/Radar # ")
+        opts = [
+            f"{Colors.YELLOW}[1]{Colors.END} Tüm Ağları Tara                  ",
+            f"{Colors.YELLOW}[2]{Colors.END} Hedefe Kilitlen (Handshake)       ",
+            f"{Colors.YELLOW}[0]{Colors.END} Geri                             "
+        ]
+        menu_box("RADAR", opts)
+        sub = input(f"\n    {Colors.BOLD}Pulse/Radar #{Colors.END} ")
         
         if sub == "1":
-            # ESKİ: iface = input("Kart adı:")
-            # YENİ:
+            # AKILLI SEÇİM BURADA:
+            iface = select_interface() 
+            if iface: # Eğer bir kart seçildiyse (None değilse)
+                radar.scan_all(iface)
+            else:
+                print(f"    {Colors.RED}[!] Kart seçilmediği için tarama yapılamıyor.{Colors.END}")
+                time.sleep(2)
+
+        elif sub == "2":
             iface = select_interface()
             if iface:
-                radar.scan_all(iface)
-                
+                bssid = input("    BSSID: ")
+                ch = input("    Kanal: ")
+                name = input("    Dosya Adı: ")
+                radar.target_lock(iface, bssid, ch, name)
+        
+        elif sub == "0":
+            break
 if __name__ == "__main__":
     main()
 
