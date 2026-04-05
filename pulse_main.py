@@ -79,43 +79,45 @@ def radar_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Hızlı Tarama (Hedef Seçimi İçin)   ",
-            f"{Colors.YELLOW}[2]{Colors.END} Tüm Ağları Canlı İzle              ",
+            f"{Colors.YELLOW}[1]{Colors.END} Otomatik Hedef Seç (Tavsiye)      ",
+            f"{Colors.YELLOW}[2]{Colors.END} Canlı İzleme (Manuel)              ",
             f"{Colors.YELLOW}[0]{Colors.END} Geri                               "
         ]
-        menu_box("RADAR", opts)
-        sub = input(f"\n    {Colors.BOLD}Pulse/Radar #{Colors.END} ")
+        menu_box("RADAR / KEŞİF", opts)
+        sub = input(f"\n    Pulse/Radar # ")
         
-        if sub == "1" or sub == "2":
+        if sub == "1":
             iface = select_interface()
-            if not iface: continue
-            
-            # Otomatik Monitör Modu Kontrolü
-            _, msg = engine.toggle_monitor(iface, "start")
-            print(msg)
-            
-            if sub == "2":
-                radar.scan_all(iface)
-            elif sub == "1":
-                nets = radar.auto_scan_and_select(iface)
-                if not nets:
-                    print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}")
+            if iface:
+                # 15 saniye tara ve ağları bul
+                found_nets = radar.auto_scan(iface)
+                
+                if not found_nets:
+                    print("    [!] Hiç ağ bulunamadı!")
                     time.sleep(2)
                     continue
                 
-                print(f"\n    {Colors.CYAN}Bulunan Hedefler:{Colors.END}")
-                for i, net in enumerate(nets):
-                    bar = radar.get_signal_bar(net['dbm'])
-                    print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar} {net['essid']} (CH:{net['ch']})")
+                # Listeyi ekrana bas
+                print(f"\n    {'ID':<4} {'SSID':<25} {'BSSID':<20} {'CH'}")
+                print("    " + "-"*55)
+                for i, net in enumerate(found_nets):
+                    print(f"    {i:<4} {net['essid'][:23]:<25} {net['bssid']:<20} {net['channel']}")
                 
-                secim = input(f"\n    {Colors.BOLD}Hedef Seç (Vazgeçmek için ENTER) #{Colors.END} ")
-                if secim.isdigit() and int(secim) < len(nets):
-                    hedef = nets[int(secim)]
-                    dosya = input("    Dosya Adı (Örn: wifi1): ")
-                    radar.target_lock(iface, hedef['bssid'], hedef['ch'], dosya)
-                    strike.verify_handshake(dosya + "-01.cap")
-                    input("\n    Devam etmek için Enter...")
+                secim = input(f"\n    Hangi hedef? (ID girin): ")
+                if secim.isdigit() and int(secim) < len(found_nets):
+                    target = found_nets[int(secim)]
+                    print(f"    [✔] Seçilen: {target['essid']}")
+                    
+                    # Artık BSSID ve Channel otomatik elimizde!
+                    dosya_adi = input("    Kaydedilecek dosya adı (örneğin 'hedef1'): ")
+                    radar.target_lock(iface, target['bssid'], target['channel'], dosya_adi)
+                else:
+                    print("    [!] Geçersiz seçim.")
 
+        elif sub == "2":
+            # Eski manuel yöntem
+            iface = select_interface()
+            if iface: radar.scan_all(iface)
         elif sub == "0": break
 
 def strike_ui():
