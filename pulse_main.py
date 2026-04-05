@@ -4,21 +4,12 @@ import sys
 import re
 from modules import engine, radar, strike, decrypt 
 
-# ==========================================
-# AUTO-SUDO: Otomatik Root Yetkisi Alma
-# ==========================================
 if os.name == 'posix' and os.geteuid() != 0:
     print("    [*] Linux tespit edildi. Root (sudo) yetkisine otomatik geçiliyor...")
     os.execvp("sudo", ["sudo", sys.executable] + sys.argv)
 
 class Colors:
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    BOLD = '\033[1m'
-    END = '\033[0m'
-    CYAN = '\033[96m'
+    BLUE, GREEN, YELLOW, RED, BOLD, END, CYAN = '\033[94m', '\033[92m', '\033[93m', '\033[91m', '\033[1m', '\033[0m', '\033[96m'
 
 def banner():
     os.system('clear' if os.name == 'posix' else 'cls') 
@@ -33,18 +24,12 @@ def banner():
     print(f"{' ' * 51}{Colors.CYAN}by EnesErbap{Colors.END}")
     print(f"{Colors.BLUE}    " + "═" * 62 + f"{Colors.END}")
 
-# ==========================================
-# MILIMETRIK KUTU ALGORITMASI
-# ==========================================
 def strip_colors(text):
-    """Renk kodlarını temizler ki uzunluğu doğru ölçelim."""
     return re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', text)
 
 def menu_box(title, options):
-    width = 62 # Kutunun sabit genişliği
+    width = 62 
     clean_title = strip_colors(title)
-    
-    # Başlığı ortalamak için boşluk hesabı
     pad_l = (width - len(clean_title) - 2) // 2
     pad_r = width - len(clean_title) - 2 - pad_l
     
@@ -52,7 +37,7 @@ def menu_box(title, options):
     print(f"    ║{' ' * width}║")
     for opt in options:
         clean_opt = strip_colors(opt)
-        spaces = width - len(clean_opt) - 2 # Sona eklenecek boşluklar
+        spaces = width - len(clean_opt) - 2
         print(f"    ║ {opt}{' ' * spaces} ║")
     print(f"    ║{' ' * width}║")
     print(f"{Colors.BOLD}    ╚{'═' * width}╝{Colors.END}")
@@ -60,17 +45,11 @@ def menu_box(title, options):
 def select_interface():
     ifaces = engine.get_interfaces()
     if not ifaces:
-        print(f"    {Colors.RED}[!] Wi-Fi kartı bulunamadı!{Colors.END}")
-        time.sleep(2)
-        return None
+        print(f"    {Colors.RED}[!] Wi-Fi kartı bulunamadı!{Colors.END}"); time.sleep(2); return None
     print(f"\n    {Colors.BOLD}[*] Mevcut Wi-Fi Kartları:{Colors.END}")
-    for i, name in enumerate(ifaces):
-        print(f"    {Colors.YELLOW}[{i}]{Colors.END} {name}")
-    try:
-        secim = int(input(f"\n    {Colors.CYAN}Pulse/Iface #{Colors.END} "))
-        return ifaces[secim]
-    except (ValueError, IndexError):
-        return None
+    for i, name in enumerate(ifaces): print(f"    {Colors.YELLOW}[{i}]{Colors.END} {name}")
+    try: return ifaces[int(input(f"\n    {Colors.CYAN}Pulse/Iface #{Colors.END} "))]
+    except (ValueError, IndexError): return None
 
 def engine_ui():
     while True:
@@ -85,12 +64,12 @@ def engine_ui():
         if sub == "1":
             iface = select_interface()
             if iface:
-                status, msg = engine.toggle_monitor(iface, "start")
+                status, msg, iface = engine.toggle_monitor(iface, "start")
                 print(msg); time.sleep(2)
         elif sub == "2":
             iface = select_interface()
             if iface:
-                success, msg = engine.toggle_monitor(iface, "stop")
+                success, msg, iface = engine.toggle_monitor(iface, "stop")
                 print(msg); time.sleep(2)
         elif sub == "0": break
 
@@ -108,10 +87,9 @@ def radar_ui():
         if sub == "1":
             iface = select_interface()
             if iface:
-                engine.toggle_monitor(iface, "start")
+                _, _, iface = engine.toggle_monitor(iface, "start")
                 found_nets = radar.auto_scan_and_select(iface) 
-                if not found_nets:
-                    print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}"); time.sleep(2); continue
+                if not found_nets: print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}"); time.sleep(2); continue
                 
                 print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<25} {'BSSID':<20} {'CH'}{Colors.END}")
                 print("    " + "-"*75)
@@ -128,7 +106,7 @@ def radar_ui():
                 else: print("    [!] Geçersiz seçim."); time.sleep(1)
         elif sub == "2":
             iface = select_interface()
-            if iface: engine.toggle_monitor(iface, "start"); radar.scan_all(iface)
+            if iface: _, _, iface = engine.toggle_monitor(iface, "start"); radar.scan_all(iface)
         elif sub == "0": break
 
 def strike_ui():
@@ -146,7 +124,7 @@ def strike_ui():
         if sub == "1" or sub == "2":
             iface = select_interface()
             if not iface: continue
-            engine.toggle_monitor(iface, "start")
+            _, _, iface = engine.toggle_monitor(iface, "start")
             print(f"\n    {Colors.CYAN}[*] Hedef seçimi için etraf taranıyor...{Colors.END}")
             found_nets = radar.auto_scan_and_select(iface) 
             if not found_nets: continue
@@ -165,11 +143,10 @@ def strike_ui():
                 strike.pulse_kick(iface, target['bssid'], client, timer)
                 input("\n    Devam etmek için Enter...")
         
-        # YENI BEACON SPAM MENÜSÜ
         elif sub == "3":
             iface = select_interface()
             if iface:
-                engine.toggle_monitor(iface, "start")
+                _, _, iface = engine.toggle_monitor(iface, "start")
                 strike.beacon_spam(iface)
                 input("\n    Devam etmek için Enter...")
         elif sub == "0": break
@@ -214,7 +191,9 @@ def main():
     except KeyboardInterrupt: print(f"\n    {Colors.RED}[!] Acil çıkış yapıldı!{Colors.END}")
     finally:
         ifaces = engine.get_interfaces()
-        if ifaces: engine.toggle_monitor(ifaces[0], "stop")
+        if ifaces: 
+            # Çıkarken sadece stop gönderiyoruz, isim dönüşüne gerek yok
+            engine.toggle_monitor(ifaces[0], "stop")
 
 if __name__ == "__main__":
     main()
