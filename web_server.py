@@ -35,10 +35,21 @@ if __name__ == '__main__':
 def start_scan():
     iface = request.args.get('iface')
     if not iface:
-        return jsonify({"status": "error", "message": "Önce bir kart seçmelisin!"})
+        return jsonify({"status": "error", "message": "Kart seçilmedi"}), 400
     
-    # Senin radar modülündeki otomatik taramayı çağırıyoruz
-    print(f"[*] {iface} üzerinde web üzerinden tarama başlatıldı...")
-    found_nets = radar.auto_scan_and_select(iface, scan_time=10) # 10 saniye tara
-    
-    return jsonify({"status": "success", "networks": found_nets})
+    try:
+        # ÖNEMLİ: engine modülünde kartın monitör modunda olduğundan emin olmalıyız
+        # Eğer kart monitör modunda değilse hata verebilir
+        print(f"[*] {iface} üzerinde tarama yapılıyor...")
+        
+        # Senin radar modülündeki fonksiyonu çağırıyoruz
+        found_nets = radar.auto_scan_and_select(iface, scan_time=10)
+        
+        # Eğer liste boş dönerse bile JSON formatında boş liste gönderiyoruz
+        return jsonify({
+            "status": "success", 
+            "networks": found_nets if found_nets else []
+        })
+    except Exception as e:
+        print(f"[!] Tarama hatası: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
