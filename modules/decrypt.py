@@ -3,39 +3,50 @@ import os
 import time
 
 
+from modules import i18n
+t = i18n.t
+
+
 # --- AIRCRACK CPU BRUTEFORCE (CPU ile Kaba Kuvvet) ---
 def wordlist_attack(cap_file, wordlist):
-    print(f"\n    [*] Şifre kırma motoru başlatılıyor (CPU - Aircrack)...")
-    cmd = f"sudo aircrack-ng {cap_file} -w {wordlist}"
+    print(t("decrypt_start_cpu"))
+    cmd = ["sudo", "aircrack-ng", cap_file, "-w", wordlist]
     try:
-        subprocess.run(cmd, shell=True)
+        subprocess.run(cmd)
     except KeyboardInterrupt:
-        print("\n    [!] Kırma işlemi iptal edildi.")
+        print(t("decrypt_cancel"))
+
+
 def brute_force(cap_file, essid, charset="0123456789", length=8):
-    print(f"\n    [*] Smart Brute başlatılıyor... (Şablon: {length} hane | Karakter: {charset})")
-    cmd = f"crunch {length} {length} {charset} | sudo aircrack-ng {cap_file} -e {essid} -w -"
+    print(t("decrypt_start_brute", length=length, charset=charset))
     try:
-        subprocess.run(cmd, shell=True)
+        p1 = subprocess.Popen(["crunch", str(length), str(length), charset], stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(["sudo", "aircrack-ng", cap_file, "-e", essid, "-w", "-"], stdin=p1.stdout)
+        p1.stdout.close()
+        p2.communicate()
     except KeyboardInterrupt:
-        print("\n    [!] Kırma işlemi iptal edildi.")
+        print(t("decrypt_cancel"))
 
 
 # --- HASHCAT GPU CRACKING (GPU ile Şifre Kırma) ---
 def hashcat_attack(cap_file, wordlist):
-    print(f"\n    [*] Hashcat (GPU) Kırma Motoru Hazırlanıyor...")
+    print(t("decrypt_hashcat_prep"))
     base_name = cap_file.replace('.cap', '')
     hc_file = f"{base_name}.hc22000"
-    print(f"    [*] Dosya Hashcat formatına (.hc22000) dönüştürülüyor...")
-    conv_cmd = f"hcxpcapngtool -o {hc_file} {cap_file} > /dev/null 2>&1"
-    subprocess.run(conv_cmd, shell=True)
+    print(t("decrypt_convert_format"))
+    
+    
+    conv_cmd = ["hcxpcapngtool", "-o", hc_file, cap_file]
+    subprocess.run(conv_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
     if not os.path.exists(hc_file) or os.path.getsize(hc_file) == 0:
-        print("    [✘] Dönüştürme başarısız! Handshake eksik veya 'hcxtools' paketi yüklü değil.")
-        print("    [!] (Linux terminalinde şunu çalıştırın: sudo apt install hcxtools hashcat)")
+        print(t("decrypt_convert_fail"))
         return
-    print(f"    [✔] Dönüştürme başarılı. Ekran kartı (GPU) ateşleniyor...\n")
+    print(t("decrypt_convert_success"))
     time.sleep(1)
-    cmd = f"hashcat -m 22000 {hc_file} {wordlist}"
+    
+    cmd = ["hashcat", "-m", "22000", hc_file, wordlist]
     try:
-        subprocess.run(cmd, shell=True)
+        subprocess.run(cmd)
     except KeyboardInterrupt:
-        print("\n    [!] Kırma işlemi manuel iptal edildi.")
+        print(t("decrypt_cancel"))

