@@ -13,7 +13,10 @@ class Colors:
 
 # --- BANNER/UI ELEMENTS (Arayüz Elemanları) ---
 def banner():
-    os.system('clear' if os.name == 'posix' else 'cls') 
+    try:
+        if os.name == 'posix': subprocess.run(["clear"])
+        else: subprocess.run(["cls"], shell=True) 
+    except: pass
     print(f"{Colors.BLUE}{Colors.BOLD}")
     print(r"""
   _____  _    _ _       _____ ______  __          _______ ______ _____ 
@@ -76,10 +79,10 @@ def engine_ui():
                 print(msg); time.sleep(2)
             elif sub == "3":
                 engine.change_mac(iface, "random")
-                print(f"    {Colors.GREEN}[✔] Sahte kimlik başarıyla atandı!{Colors.END}"); time.sleep(2)
+                print(t("mac_fake_success")); time.sleep(2)
             elif sub == "4":
                 engine.change_mac(iface, "reset")
-                print(f"    {Colors.GREEN}[✔] Orijinal kimliğe geri dönüldü!{Colors.END}"); time.sleep(2)
+                print(t("mac_original_success")); time.sleep(2)
         elif sub == "0": break
 
 
@@ -99,19 +102,19 @@ def radar_ui():
             if iface:
                 _, _, iface = engine.toggle_monitor(iface, "start")
                 found_nets = radar.auto_scan_and_select(iface) 
-                if not found_nets: print(f"    {Colors.RED}[!] Hiç ağ bulunamadı.{Colors.END}"); time.sleep(2); continue
-                print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<20} {'MARKA':<12} {'BSSID':<18} {'CH'}{Colors.END}")
+                if not found_nets: print(f"    {Colors.RED}{t('radar_no_nets')}{Colors.END}"); time.sleep(2); continue
+                print(f"\n    {Colors.CYAN}{t('radar_table_header')}{Colors.END}")
                 print("    " + "-"*76)
                 for i, net in enumerate(found_nets):
                     bar = radar.get_signal_bar(net['dbm'])
                     print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:18]:<20} {net['vendor']:<12} {net['bssid']:<18} {net['ch']}")
-                secim = input(f"\n    Hangi hedef? (0 ile {len(found_nets)-1} arası bir ID girin): ")
+                secim = input(t("radar_target_prompt", max_id=len(found_nets)-1))
                 if secim.isdigit() and int(secim) < len(found_nets):
                     target = found_nets[int(secim)]
-                    print(f"    [✔] Seçilen: {target['essid']} ({target['vendor']})")
-                    dosya_adi = input("    Kaydedilecek dosya adı (Şu anki klasöre '.cap' olarak kaydedilecek, örn: 'hedef1'): ")
+                    print(t("radar_target_selected", essid=target['essid'], vendor=target['vendor']))
+                    dosya_adi = input(t("radar_save_prompt"))
                     radar.target_lock(iface, target['bssid'], target['ch'], dosya_adi)
-                else: print("    [!] Geçersiz seçim. Lütfen listedeki numaralardan birini girin."); time.sleep(1.5)
+                else: print(t("radar_invalid_selection")); time.sleep(1.5)
         elif sub == "2":
             iface = select_interface()
             if iface: _, _, iface = engine.toggle_monitor(iface, "start"); radar.scan_all(iface)
@@ -128,16 +131,17 @@ def strike_ui():
             f"{Colors.YELLOW}[3]{Colors.END} {t('menu_strike_opt3').replace('[3] ', '')}",
             f"{Colors.YELLOW}[4]{Colors.END} {t('menu_strike_opt4').replace('[4] ', '')}",
             f"{Colors.YELLOW}[5]{Colors.END} {t('menu_strike_opt5').replace('[5] ', '')}",
+            f"{Colors.YELLOW}[6]{Colors.END} {t('menu_strike_opt6').replace('[6] ', '')}",
             f"{Colors.YELLOW}[0]{Colors.END} {t('menu_radar_opt0').replace('[0] ', '')}"
         ]
         menu_box(t("menu_strike_title"), opts)
         sub = input(f"\n    {Colors.BOLD}{t('strike_prompt').strip()}{Colors.END} ")
-        if sub in ["1", "2", "5"]:
+        if sub in ["1", "2", "5", "6"]:
             iface = select_interface()
             if not iface: continue
             if sub == "5" and iface.endswith("mon"):
-                print(f"    {Colors.RED}[!] Evil Twin için adaptör Manage modunda (ör: wlan0) olmalıdır, 'mon' değil.{Colors.END}")
-                print(f"    {Colors.YELLOW}[*] 'Engine' menüsünden Monitör Modunu kapatıp tekrar gelin.{Colors.END}"); time.sleep(3); continue
+                print(f"    {Colors.RED}{t('strike_evil_twin_error')}{Colors.END}")
+                print(f"    {Colors.YELLOW}{t('strike_evil_twin_hint')}{Colors.END}"); time.sleep(3); continue
             if sub in ["1", "2"]:
                 _, _, iface = engine.toggle_monitor(iface, "start")
             print(f"\n    {Colors.CYAN}[*] Hedef seçimi için etraf taranıyor...{Colors.END}")
@@ -148,37 +152,48 @@ def strike_ui():
             else:
                 found_nets = radar.auto_scan_and_select(iface) 
             if not found_nets: continue
-            print(f"\n    {Colors.CYAN}{'ID':<3} {'SİNYAL':<15} {'SSID':<25} {'BSSID':<20} {'CH'}{Colors.END}")
+            print(f"\n    {Colors.CYAN}{t('strike_table_header')}{Colors.END}")
             for i, net in enumerate(found_nets):
                 bar = radar.get_signal_bar(net['dbm'])
                 print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:23]:<25} {net['bssid']:<20} {net['ch']}")
-            secim = input(f"\n    Hedef ağ (ID): ")
+            secim = input(t("strike_target_prompt"))
             if secim.isdigit() and int(secim) < len(found_nets):
                 target = found_nets[int(secim)]
                 if sub in ["1", "2"]:
-                    engine.run_cmd(f"sudo iwconfig {iface} channel {target['ch']}")
-                    client = input("    Düşürülecek Cihaz MAC (Boş bırakırsan ağdaki herkes düşer): ") if sub == "2" else None
-                    timer = input("    Saldırı Süresi (Saniye, sınırsız için 0 veya Enter'a bas): ")
-                    timer = int(timer) if timer.isdigit() else 0
+                    engine.run_cmd(["sudo", "iwconfig", iface, "channel", target['ch']])
+                    client = input(t("strike_client_prompt")) if sub == "2" else None
+                    timer_input = input(t("strike_timer_prompt"))
+                    timer = int(timer_input) if timer_input.isdigit() else 0
                     strike.pulse_kick(iface, target['bssid'], client, timer)
-                    input("\n    Devam etmek için Enter...")
+                    input(t("strike_press_enter"))
                 elif sub == "5":
                     eviltwin.start_evil_twin(iface, target['essid'], target['ch'])
-                    input("\n    Devam etmek için Enter...")
+                    input(t("strike_press_enter"))
+                elif sub == "6":
+                    strike.mesh_strike(iface, target['essid'])
+                    input(t("strike_press_enter"))
             else:
-                print("    [!] Geçersiz seçim. Lütfen listedeki numaralardan birini girin."); time.sleep(1.5)
+                    if sub == "6":
+                        ssid = input(t("strike_mesh_prompt"))
+                        if ssid:
+                            strike.mesh_strike(iface, ssid)
+                            input(t("strike_press_enter"))
+                        else:
+                            print(f"    {Colors.RED}{t('radar_invalid_selection')}{Colors.END}"); time.sleep(1.5)
+                    else:
+                        print(t("radar_invalid_selection")); time.sleep(1.5)
         elif sub == "3":
             iface = select_interface()
             if iface:
                 _, _, iface = engine.toggle_monitor(iface, "start")
                 strike.beacon_spam(iface)
-                input("\n    Devam etmek için Enter...")
+                input(t("strike_press_enter"))
         elif sub == "4":
             iface = select_interface()
             if iface:
                 _, _, iface = engine.toggle_monitor(iface, "start")
                 strike.chaos_mode(iface)
-                input("\n    Devam etmek için Enter...")
+                input(t("strike_press_enter"))
         elif sub == "0": break
 
 
@@ -196,21 +211,21 @@ def decrypt_ui():
         menu_box(t("menu_decrypt_title"), opts)
         sub = input(f"\n    {Colors.BOLD}{t('decrypt_prompt').strip()}{Colors.END} ")
         if sub in ["1", "2", "3", "4"]:
-            cap = input("    .cap Dosyasının Yolu (Örn: hedef1-01.cap): ")
+            cap = input(t("decrypt_cap_prompt"))
             if sub == "1": 
-                wl = input("    Wordlist Yolu (Enter'a basarsan varsayılan '/usr/share/wordlists/rockyou.txt' kullanılır): ") or "/usr/share/wordlists/rockyou.txt"
+                wl = input(t("decrypt_wl_prompt")) or "/usr/share/wordlists/rockyou.txt"
                 decrypt.wordlist_attack(cap, wl)
             elif sub == "2": 
-                essid = input("    Hedef Ağın Adı (ESSID): ")
-                charset = input("    Karakter Seti (Enter'a basarsan varsayılan '0123456789' kullanılır): ") or "0123456789"
-                length_str = input("    Şifre Uzunluğu (Enter'a basarsan varsayılan 8 kullanılır): ") or "8"
+                essid = input(t("decrypt_essid_prompt"))
+                charset = input(t("decrypt_charset_prompt")) or "0123456789"
+                length_str = input(t("decrypt_length_prompt")) or "8"
                 decrypt.brute_force(cap, essid, charset, int(length_str))
             elif sub == "3": 
-                wl = input("    Wordlist Yolu (Enter'a basarsan varsayılan '/usr/share/wordlists/rockyou.txt' kullanılır): ") or "/usr/share/wordlists/rockyou.txt"
+                wl = input(t("decrypt_wl_prompt")) or "/usr/share/wordlists/rockyou.txt"
                 decrypt.hashcat_attack(cap, wl)
             elif sub == "4": 
                 strike.verify_handshake(cap)
-            input("\n    Devam etmek için Enter...")
+            input(t("strike_press_enter"))
         elif sub == "0": break
 
 
@@ -241,5 +256,6 @@ def main():
             engine.toggle_monitor(ifaces[0], "stop")
             print(f"{Colors.BLUE}{t('main_restore_mac')}{Colors.END}")
             engine.change_mac(gercek_isim, "reset")
+        engine.cleanup()
 if __name__ == "__main__":
     main()

@@ -1,12 +1,25 @@
 import subprocess
 import os
 import time
+import re
+from modules import i18n
+t = i18n.t
+
+
+# --- UTILS (Yardımcı Araçlar) ---
+def clean_ssid(ssid):
+    """SSID karakterlerini temizler, gizli karakterleri siler ve 32 karakterle sınırlar."""
+    if not ssid: return ""
+    
+    cleaned = "".join(filter(lambda x: x.isprintable(), ssid))
+ 
+    return cleaned.strip()[:32]
 
 
 # --- LIVE SCANNING (Canlı Tarama) ---
 def scan_all(iface):
     """Ekranda canlı tarama yapar, sadece izleme içindir."""
-    print(f"\n    [*] {iface} ile canlı tarama başlatılıyor... (Durdurmak için CTRL+C)")
+    print(t("strike_scanning"))
     try:
         subprocess.run(f"sudo airodump-ng {iface} -M", shell=True)
     except KeyboardInterrupt:
@@ -40,21 +53,36 @@ def get_vendor(mac):
                                 return marka[:12] 
             except:
                 continue
-    return "Bilinmiyor"
+    return t("radar_unknown_vendor")
 
 
 # --- AUTO TARGET SELECT (Otomatik Hedef Seçimi) ---
 def auto_scan_and_select(iface, scan_time=15):
     """Arka planda tarar ve bulunan ağları bir liste olarak döner."""
-    print(f"\n    [*] Hızlı keşif başlatıldı, {scan_time} saniye çevre dinleniyor...")
-    os.system("rm -f /tmp/pulse_scan*")
-    cmd = (f"sudo airodump-ng {iface} --output-format csv -w /tmp/pulse_scan & "
-           f"sleep {scan_time}; sudo killall airodump-ng")
-    subprocess.run(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+    print(t("strike_scanning"))
+    
+    # Dosya temizliği (shell=True yerine güvenli yöntem)
+    import glob
+    for f in glob.glob("/tmp/pulse_scan*"):
+        try: os.remove(f)
+        except: pass
+
+    # airodump-ng'yi arka planda başlat (& yerine Popen)
+    cmd = ["sudo", "airodump-ng", iface, "--output-format", "csv", "-w", "/tmp/pulse_scan"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    try:
+        time.sleep(scan_time)
+    finally:
+        # Süreci güvenli bir şekilde sonlandır (killall yerine terminate)
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
     networks = []
     file_path = '/tmp/pulse_scan-01.csv'
     if not os.path.exists(file_path):
-        print(f"    [!] Hata: Tarama dosyası oluşturulamadı.")
         return networks
     try:
         with open(file_path, 'r') as f:
@@ -67,7 +95,7 @@ def auto_scan_and_select(iface, scan_time=15):
                     bssid = parts[0].strip()
                     ch = parts[3].strip()
                     dbm = parts[8].strip()
-                    essid = parts[13].strip()
+                    essid = clean_ssid(parts[13])
                     if bssid and essid:
                         networks.append({
                             'bssid': bssid, 
@@ -76,8 +104,8 @@ def auto_scan_and_select(iface, scan_time=15):
                             'essid': essid,
                             'vendor': get_vendor(bssid) 
                         })
-    except Exception as e:
-        print(f"    [!] Veri işlenirken hata oluştu: {e}")
+    except Exception:
+        pass
     def sort_by_signal(net):
         try:
             val = int(net['dbm'].strip())
@@ -93,10 +121,9 @@ def auto_scan_and_select(iface, scan_time=15):
 # --- TARGET LOCK (Hedefe Kilitlenme) ---
 def target_lock(iface, bssid, channel, file_name):
     """Seçilen hedefe kilitlenip Handshake yakalamaya çalışır."""
-    print(f"\n    [*] Hedefe kilitlenildi: {bssid} (Kanal: {channel})")
-    print(f"    [*] Handshake bekleniyor... (Durdurmak için CTRL+C)")
-    cmd = f"sudo airodump-ng --bssid {bssid} -c {channel} -w {file_name} {iface}"
+    print(t("strike_handshake_check", cap_file=f"{bssid} (Ch: {channel})"))
+    cmd = ["sudo", "airodump-ng", "--bssid", bssid, "-c", channel, "-w", file_name, iface]
     try:
-        subprocess.run(cmd, shell=True)
+        subprocess.run(cmd)
     except KeyboardInterrupt:
-        print(f"\n    [✔] Dinleme bitti. '{file_name}-01.cap' dosyası şu anki klasörde seni bekliyor.")
+        print(t("strike_press_enter"))
