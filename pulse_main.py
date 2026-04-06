@@ -2,10 +2,11 @@ import os
 import time
 import sys
 import re
-from modules import engine, radar, strike, decrypt, eviltwin
+from modules import engine, radar, strike, decrypt, eviltwin, i18n
+t = i18n.t
 
 if os.name == 'posix' and os.geteuid() != 0:
-    print("    [*] Linux tespit edildi. Root (sudo) yetkisine otomatik geçiliyor...")
+    print(t("root_escalation"))
     os.execvp("sudo", ["sudo", sys.executable] + sys.argv)
 
 class Colors:
@@ -45,24 +46,24 @@ def menu_box(title, options):
 def select_interface():
     ifaces = engine.get_interfaces()
     if not ifaces:
-        print(f"    {Colors.RED}[!] Wi-Fi kartı bulunamadı!{Colors.END}"); time.sleep(2); return None
-    print(f"\n    {Colors.BOLD}[*] Mevcut Wi-Fi Kartları:{Colors.END}")
+        print(f"    {Colors.RED}{t('no_wifi_card').strip()}{Colors.END}"); time.sleep(2); return None
+    print(f"\n    {Colors.BOLD}{t('existing_wifi_cards').strip()}{Colors.END}")
     for i, name in enumerate(ifaces): print(f"    {Colors.YELLOW}[{i}]{Colors.END} {name}")
-    try: return ifaces[int(input(f"\n    {Colors.CYAN}Pulse/Iface #{Colors.END} "))]
+    try: return ifaces[int(input(f"\n    {Colors.CYAN}{t('iface_prompt').strip()}{Colors.END} "))]
     except (ValueError, IndexError): return None
 
 def engine_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Monitör Modunu AÇ (Saldırı Hazırlığı)",
-            f"{Colors.YELLOW}[2]{Colors.END} Monitör Modunu KAPAT (İnterneti Geri Al)",
-            f"{Colors.YELLOW}[3]{Colors.END} Gizlilik Kalkanı AÇ (Rastgele MAC Al)",
-            f"{Colors.YELLOW}[4]{Colors.END} Gizlilik Kalkanı KAPAT (Orijinal MAC Dön)",
-            f"{Colors.YELLOW}[0]{Colors.END} Ana Menüye Dön"
+            f"{Colors.YELLOW}[1]{Colors.END} {t('menu_engine_opt1').replace('[1] ', '')}",
+            f"{Colors.YELLOW}[2]{Colors.END} {t('menu_engine_opt2').replace('[2] ', '')}",
+            f"{Colors.YELLOW}[3]{Colors.END} {t('menu_engine_opt3').replace('[3] ', '')}",
+            f"{Colors.YELLOW}[4]{Colors.END} {t('menu_engine_opt4').replace('[4] ', '')}",
+            f"{Colors.YELLOW}[0]{Colors.END} {t('menu_return').replace('[0] ', '')}"
         ]
-        menu_box("ENGINE - ADAPTÖR & GİZLİLİK YÖNETİMİ", opts)
-        sub = input(f"\n    {Colors.BOLD}Pulse/Engine #{Colors.END} ")
+        menu_box(t("menu_engine_title"), opts)
+        sub = input(f"\n    {Colors.BOLD}{t('engine_prompt').strip()}{Colors.END} ")
         
         if sub in ["1", "2", "3", "4"]:
             iface = select_interface()
@@ -87,12 +88,12 @@ def radar_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Otomatik Hedef Seç (Tavsiye)",
-            f"{Colors.YELLOW}[2]{Colors.END} Canlı İzleme (Manuel)",
-            f"{Colors.YELLOW}[0]{Colors.END} Geri"
+            f"{Colors.YELLOW}[1]{Colors.END} {t('menu_radar_opt1').replace('[1] ', '')}",
+            f"{Colors.YELLOW}[2]{Colors.END} {t('menu_radar_opt2').replace('[2] ', '')}",
+            f"{Colors.YELLOW}[0]{Colors.END} {t('menu_radar_opt0').replace('[0] ', '')}"
         ]
-        menu_box("RADAR / KEŞİF", opts)
-        sub = input(f"\n    {Colors.BOLD}Pulse/Radar #{Colors.END} ")
+        menu_box(t("menu_radar_title"), opts)
+        sub = input(f"\n    {Colors.BOLD}{t('radar_prompt').strip()}{Colors.END} ")
 
         if sub == "1":
             iface = select_interface()
@@ -123,15 +124,15 @@ def strike_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Ağdaki Herkesi Düşür (Broadcast)",
-            f"{Colors.YELLOW}[2]{Colors.END} Spesifik Cihazı Düşür (Targeted)",
-            f"{Colors.YELLOW}[3]{Colors.END} Beacon Spam (Etrafa Sahte Ağlar Yay)",
-            f"{Colors.YELLOW}[4]{Colors.END} Chaos Modu (Tam Otomatik Kitle İmha)",
-            f"{Colors.YELLOW}[5]{Colors.END} Evil Twin (Rogue AP & Captive Portal)",
-            f"{Colors.YELLOW}[0]{Colors.END} Geri"
+            f"{Colors.YELLOW}[1]{Colors.END} {t('menu_strike_opt1').replace('[1] ', '')}",
+            f"{Colors.YELLOW}[2]{Colors.END} {t('menu_strike_opt2').replace('[2] ', '')}",
+            f"{Colors.YELLOW}[3]{Colors.END} {t('menu_strike_opt3').replace('[3] ', '')}",
+            f"{Colors.YELLOW}[4]{Colors.END} {t('menu_strike_opt4').replace('[4] ', '')}",
+            f"{Colors.YELLOW}[5]{Colors.END} {t('menu_strike_opt5').replace('[5] ', '')}",
+            f"{Colors.YELLOW}[0]{Colors.END} {t('menu_radar_opt0').replace('[0] ', '')}"
         ]
-        menu_box("STRIKE - DEAUTH SALDIRISI", opts)
-        sub = input(f"\n    {Colors.BOLD}Pulse/Strike #{Colors.END} ")
+        menu_box(t("menu_strike_title"), opts)
+        sub = input(f"\n    {Colors.BOLD}{t('strike_prompt').strip()}{Colors.END} ")
         
         if sub in ["1", "2", "5"]:
             iface = select_interface()
@@ -196,14 +197,14 @@ def decrypt_ui():
     while True:
         banner()
         opts = [
-            f"{Colors.YELLOW}[1]{Colors.END} Aircrack İle Kır (CPU - Standart)",
-            f"{Colors.YELLOW}[2]{Colors.END} Smart Brute (Sadece Rakamlar vb.)",
-            f"{Colors.YELLOW}[3]{Colors.END} Hashcat İle Kır (GPU - Ultra Hızlı)",
-            f"{Colors.YELLOW}[4]{Colors.END} Handshake Doğrula",
-            f"{Colors.YELLOW}[0]{Colors.END} Geri"
+            f"{Colors.YELLOW}[1]{Colors.END} {t('menu_decrypt_opt1').replace('[1] ', '')}",
+            f"{Colors.YELLOW}[2]{Colors.END} {t('menu_decrypt_opt2').replace('[2] ', '')}",
+            f"{Colors.YELLOW}[3]{Colors.END} {t('menu_decrypt_opt3').replace('[3] ', '')}",
+            f"{Colors.YELLOW}[4]{Colors.END} {t('menu_decrypt_opt4').replace('[4] ', '')}",
+            f"{Colors.YELLOW}[0]{Colors.END} {t('menu_radar_opt0').replace('[0] ', '')}"
         ]
-        menu_box("DECRYPT / ŞİFRE KIRMA", opts)
-        sub = input(f"\n    {Colors.BOLD}Pulse/Decrypt #{Colors.END} ")
+        menu_box(t("menu_decrypt_title"), opts)
+        sub = input(f"\n    {Colors.BOLD}{t('decrypt_prompt').strip()}{Colors.END} ")
         if sub in ["1", "2", "3", "4"]:
             cap = input("    .cap Dosyasının Yolu (Örn: hedef1-01.cap): ")
             
@@ -232,26 +233,26 @@ def main():
         while True:
             banner()
             opts = [
-                f"{Colors.YELLOW}[1]{Colors.END} ENGINE  (Sistem & Gizlilik)",
-                f"{Colors.YELLOW}[2]{Colors.END} RADAR   (Keşif & Hedef Seçimi)",
-                f"{Colors.YELLOW}[3]{Colors.END} STRIKE  (Saldırı & Deauth)",
-                f"{Colors.YELLOW}[4]{Colors.END} DECRYPT (Şifre Kırma & Analiz)",
-                f"{Colors.YELLOW}[0]{Colors.END} Çıkış"
+                f"{Colors.YELLOW}[1]{Colors.END} {t('menu_main_opt1').replace('[1] ', '')}",
+                f"{Colors.YELLOW}[2]{Colors.END} {t('menu_main_opt2').replace('[2] ', '')}",
+                f"{Colors.YELLOW}[3]{Colors.END} {t('menu_main_opt3').replace('[3] ', '')}",
+                f"{Colors.YELLOW}[4]{Colors.END} {t('menu_main_opt4').replace('[4] ', '')}",
+                f"{Colors.YELLOW}[0]{Colors.END} {t('menu_main_opt0').replace('[0] ', '')}"
             ]
-            menu_box("KATEGORİLER (Önerilen Akış Sırası)", opts)
-            choice = input(f"\n    {Colors.BOLD}Pulse #{Colors.END} ")
+            menu_box(t("menu_main_title"), opts)
+            choice = input(f"\n    {Colors.BOLD}{t('main_prompt').strip()}{Colors.END} ")
             if choice == "1": engine_ui()
             elif choice == "2": radar_ui()
             elif choice == "3": strike_ui()
             elif choice == "4": decrypt_ui()
-            elif choice == "0": print(f"\n    {Colors.BLUE}[*] Pulse kesiliyor... Ağ ayarları onarılıyor...{Colors.END}"); break
-    except KeyboardInterrupt: print(f"\n    {Colors.RED}[!] Acil çıkış yapıldı! Ağ ayarları kurtarılıyor...{Colors.END}")
+            elif choice == "0": print(f"{Colors.BLUE}{t('main_exit')}{Colors.END}"); break
+    except KeyboardInterrupt: print(f"{Colors.RED}{t('main_emergency_exit')}{Colors.END}")
     finally:
         ifaces = engine.get_interfaces()
         if ifaces: 
             gercek_isim = ifaces[0].replace('mon', '')
             engine.toggle_monitor(ifaces[0], "stop")
-            print(f"    {Colors.BLUE}[*] Orijinal kimliğe (MAC) dönülüyor...{Colors.END}")
+            print(f"{Colors.BLUE}{t('main_restore_mac')}{Colors.END}")
             engine.change_mac(gercek_isim, "reset")
 
 if __name__ == "__main__":

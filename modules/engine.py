@@ -1,3 +1,5 @@
+from modules import i18n
+t = i18n.t
 import subprocess
 import os
 
@@ -24,24 +26,24 @@ def get_real_iface(iface):
 def toggle_monitor(iface, mode="start"):
     if mode == "start":
         if not is_monitor(iface):
-            print("    [*] Hazırlanıyor: " + iface)
+            print(t("engine_monitor_prep", iface=iface))
             run_cmd("sudo airmon-ng check kill")
             run_cmd("sudo airmon-ng start " + iface)
         
         yeni_isim = get_real_iface(iface)
         
         if is_monitor(yeni_isim):
-            return True, "    [✔] " + yeni_isim + " Monitör modunda.", yeni_isim
+            return True, t("engine_monitor_start_success", yeni_isim=yeni_isim), yeni_isim
         else:
-            return False, "    [✘] Mod değiştirilemedi.", yeni_isim
+            return False, t("engine_monitor_start_fail"), yeni_isim
     else:
-        print("    [*] Monitör modu kapatılıyor...")
+        print(t("engine_monitor_stop"))
         run_cmd("sudo airmon-ng stop " + iface)
         run_cmd("sudo systemctl restart NetworkManager")
         run_cmd("sudo systemctl restart wpa_supplicant")
         
         eski_isim = iface.replace('mon', '')
-        return True, "    [✔] İnternet servisleri geri yüklendi.", eski_isim
+        return True, t("engine_monitor_stop_success"), eski_isim
 
 def get_interfaces():
     interfaces = []
@@ -56,16 +58,16 @@ def get_interfaces():
 # YENİ: GİZLİLİK KALKANI (MAC SPOOFING)
 # ==========================================
 def change_mac(iface, mode="random"):
-    print(f"\n    [*] Ağ kartı ({iface}) geçici olarak kapatılıyor...")
+    print(t("engine_mac_down", iface=iface))
     run_cmd(f"sudo ip link set {iface} down")
     
     if mode == "random":
-        print("    [*] Gizlilik Kalkanı Aktif: Rastgele sahte bir MAC adresi üretiliyor...")
+        print(t("engine_mac_random"))
         run_cmd(f"sudo macchanger -r {iface}")
     elif mode == "reset":
-        print("    [*] Kalkan Kapatılıyor: Orijinal fabrika MAC adresine dönülüyor...")
+        print(t("engine_mac_reset"))
         run_cmd(f"sudo macchanger -p {iface}")
         
-    print(f"    [*] Ağ kartı tekrar ayağa kaldırılıyor...")
+    print(t("engine_mac_up"))
     run_cmd(f"sudo ip link set {iface} up")
     return True
