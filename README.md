@@ -1,79 +1,103 @@
 <div align="center">
 
-# 📡 PulseWifi - Ultimate Wi-Fi Penetration Suite
+# 📡 PulseWifi 
+### Advanced Wi-Fi Security & Penetration Suite
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![OS](https://img.shields.io/badge/OS-Kali%20Linux%20%7C%20Parrot%20%7C%20Ubuntu-orange.svg)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen.svg)
-![License](https://img.shields.io/badge/License-MIT-red.svg)
+![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python)
+![OS](https://img.shields.io/badge/Sistem-Kali%20Linux-orange.svg?style=for-the-badge&logo=kali-linux)
+![Status](https://img.shields.io/badge/Status-Stable-brightgreen.svg?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-red.svg?style=for-the-badge)
 
-**[English](#english) | [Türkçe](#türkçe)**
+**[English](#-english) | [Türkçe](#-türkçe)**
 
-PulseWifi is an advanced, automated, and modular TUI (Text User Interface) tool designed for Wi-Fi security auditing, penetration testing, and vulnerability analysis.
+PulseWifi is a modular, high-performance TUI (Text User Interface) tool designed to automate complex Wi-Fi security auditing processes. It bridges the gap between raw command-line tools and a seamless user experience.
 
-> ⚠️ **Disclaimer:** This tool is strictly for educational purposes and ethical hacking. The authors are not responsible for any misuse or legal actions. Always have permission before testing any network!
+> [!CAUTION]
+> **Legal Disclaimer:** This tool is strictly for educational purposes and authorized penetration testing. Misuse of this software can lead to criminal charges. Always obtain explicit permission before testing any network!
 
-<br>
 </div>
 
 ---
 
-<h2 id="english">🇬🇧 English Readme</h2>
+## 🇬🇧 English
 
-PulseWifi combines the power of tools like `aircrack-ng`, `mdk3`, `hashcat`, and `macchanger` down to a single, interactive, and aesthetic dashboard. It automatically manages your adapters, cleans up residual configurations, and prevents connectivity loss after your tasks are done.
+PulseWifi is built on top of industry-standard tools, providing a unified interface for reconnaissance, attack, and decryption. It handles adapter states and network configurations automatically to ensure your environment stays stable.
 
-### 🌟 Key Features
-* 🛡 **Engine:** Auto-manage monitor mode and randomize your MAC Address (Privacy Shield).
-* 📡 **Radar:** Find the closest targets, determine vendor device info offline, and lock on APs automatically.
-* ⚡ **Strike:** Targeted Deauth, Mass Deauth, Beacon Spam (Troll & Chaos Modes), and automated Evil Twin (Captive Portal DNS hijacking).
-* 🔓 **Decrypt:** Integrates Aircrack-ng for CPU-based cracking and Hashcat (hcxtools) for ultra-fast GPU processing.
+### 🚀 Core Modules
 
-### 🚀 Installation
+| Module | Description |
+| :--- | :--- |
+| 🛡 **Engine** | High-level adapter management. Enable/Disable Monitor mode and activate the **Privacy Shield** (MAC Randomization). |
+| 📡 **Radar** | Passive and active reconnaissance. Offline OUI database for vendor detection and signal-based target prioritizing. |
+| ⚡ **Strike** | Automated attacks. Includes Targeted Deauth, Mass Deauth, Beacon Spamming (Chaos Mode), and Evil Twin setups. |
+| 🔓 **Decrypt** | Dual-mode cracking. CPU-based Aircrack-ng or high-speed GPU-based Hashcat (converts .cap to .hc22000 automatically). |
+
+### 🛠 Technology Stack
+* **Language:** Python 3.8+
+* **System Utilities:** `aircrack-ng`, `mdk3`, `macchanger`, `hashcat`, `hcxtools`, `hostapd`, `dnsmasq`
+* **Web Portal:** Flask (for Evil Twin Captive Portals)
+
+### 📥 Installation & Usage
 ```bash
+# Clone the repository
 git clone https://github.com/eneserbap/PulseWifi.git
 cd PulseWifi
+
+# Run installer (Installs all dependencies)
 chmod +x install.sh
 sudo ./install.sh
-```
 
-### 🎮 Usage
-You must run PulseWifi as Root (Sudo).
-```bash
+# Run PulseWifi
 sudo python3 pulse_main.py
 ```
-> **Multi-Language:** PulseWifi auto-detects your system language. You can manually change it via the generated `config.json`!
+
+### 🗺 Roadmap
+- [ ] WPS Attack Module (Reaver/Bully integration)
+- [ ] Bluetooth Reconnaissance Module
+- [ ] Custom Captive Portal Templates
+- [ ] Detailed PDF Report Generation
 
 ---
 
-<h2 id="türkçe">🇹🇷 Türkçe Readme</h2>
+## 🇹🇷 Türkçe
 
-PulseWifi; `aircrack-ng`, `mdk3`, `hashcat` ve `macchanger` gibi endüstri standardı araçları tek bir ekranda toplayan profesyonel ve TUI (Metin Tabanlı Arayüz) destekli bir siber güvenlik Wi-Fi otomasyon aracıdır.
+PulseWifi, karmaşık Wi-Fi güvenlik denetleme süreçlerini tek bir merkezden yönetmenizi sağlayan, modüler ve yüksek performanslı bir TUI aracıdır. Ham komut satırı araçlarını profesyonel bir kullanıcı deneyimi ile birleştirir.
 
-Saldırı veya dinleme işleminden sonra ağ ayarlarınızı, servislerinizi (NetworkManager vb.) ve MAC adresinizi otomatik olarak orijinal haline getirerek geride iz bırakmamanızı sağlar.
+### 🚀 Temel Modüller
 
-### 🌟 Temel Özellikler
-* 🛡 **Engine (Motor):** Ağ kartını otomatik Monitör porta çeker, veya "Gizlilik Kalkanı" başlatarak MAC adresinizi değiştirir.
-* 📡 **Radar (Keşif):** Çevreyi tarar, hedefleri sinyal gücüne göre listeler ve cihaz markalarını (Offline OUI veritabanı ile) analiz eder.
-* ⚡ **Strike (Saldırı):** İster tek hedefe, ister herkese deauth (düşürme) atın. Dilerseniz Chaos Mode ile tüm mahalleyi kilitleyin veya Evil Twin (Şeytani İkiz) oluşturup kullanıcıların şifresini Captive Portal ile yakalayın.
-* 🔓 **Decrypt (Kırma):** Sadece Aircrack ile kalmaz, `.cap` dosyalarını `.hc22000`'e çevirerek Ekran Kartı (GPU) destekli ultra hızlı *Hashcat* kırımına olanak tanır.
+*   🛡 **Engine:** Adaptör yönetimi. Monitör modunu açıp kapatır ve **Gizlilik Kalkanı** (MAC Adresi Rastgeleleştirme) sağlar.
+*   📡 **Radar:** Pasif ve aktif keşif. Marka tespiti için çevrimdışı OUI veritabanı ve sinyal gücüne göre hedef sıralama yardımı sağlar.
+*   ⚡ **Strike:** Otomasyonlu saldırılar. Hedefli/Genel Deauth, Beacon Spam (Kaos Modu) ve Evil Twin (Şeytani İkiz) kurulumlarını kapsar.
+*   🔓 **Decrypt:** Çift modlu şifre kırma. CPU tabanlı Aircrack-ng veya yüksek hızlı GPU tabanlı Hashcat desteği (.cap dosyalarını otomatik .hc22000'e çevirir).
 
-### 🚀 Kurulum
+### 🛠 Teknik Altyapı
+*   **Dil:** Python 3.8+
+*   **Sistem Araçları:** `aircrack-ng`, `mdk3`, `macchanger`, `hashcat`, `hcxtools`, `hostapd`, `dnsmasq`
+*   **Web Portal:** Flask (Evil Twin için sahte giriş sayfaları)
+
+### 📥 Kurulum ve Kullanım
 ```bash
+# Depoyu klonlayın
 git clone https://github.com/eneserbap/PulseWifi.git
 cd PulseWifi
+
+# Kurulumu başlatın (Tüm bağımlılıkları yükler)
 chmod +x install.sh
 sudo ./install.sh
-```
 
-### 🎮 Kullanım
-Dosyayı doğrudan çalıştırdığınızda (eğer root değilseniz) sizden Root şifresi isteyerek yetkiyi devralacaktır.
-```bash
+# Çalıştırın
 sudo python3 pulse_main.py
 ```
-> **Çoklu Dil Desteği:** PulseWifi dilinizi otomatik algılar. Dilerseniz oluşan `config.json` dosyası içinden menü dilini `tr` veya `en` olarak manuel biçimde ayarlayabilirsiniz!
+
+### 📅 Gelecek Planları
+- [ ] WPS Saldırı Modülü (Reaver/Bully entegrasyonu)
+- [ ] Bluetooth Keşif Modülü
+- [ ] Özel Captive Portal Temaları
+- [ ] Detaylı PDF Rapor Oluşturma
 
 ---
 
 <div align="center">
-<i>Developed entirely with passion by <b>EnesErbap</b></i>
+  <p><b>Handcrafted with passion for the Cybersecurity community.</b></p>
+  <sub>By EnesErbap</sub>
 </div>
