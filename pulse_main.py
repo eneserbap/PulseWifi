@@ -2,6 +2,7 @@ import os
 import time
 import sys
 import re
+import subprocess
 from modules import engine, radar, strike, decrypt, eviltwin, i18n
 t = i18n.t
 if os.name == 'posix' and os.geteuid() != 0:
