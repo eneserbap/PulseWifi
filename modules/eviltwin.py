@@ -2,8 +2,9 @@ import os
 import subprocess
 import time
 import threading
-from modules import radar, i18n
+from modules import radar, i18n, engine
 t = i18n.t
+
 def cleanup():
     print(t("eviltwin_cleanup"))
     subprocess.run(["sudo", "killall", "hostapd", "dnsmasq"], capture_output=True)
@@ -13,9 +14,14 @@ def cleanup():
     subprocess.run(["sudo", "sysctl", "-w", "net.ipv4.ip_forward=0"], capture_output=True)
     subprocess.run(["sudo", "iptables", "-F"], capture_output=True)
     subprocess.run(["sudo", "iptables", "-t", "nat", "-F"], capture_output=True)
-    subprocess.run(["sudo", "systemctl", "start", "NetworkManager"], capture_output=True)
-    subprocess.run(["sudo", "nmcli", "networking", "on"], capture_output=True)
+    
+    nm_service = engine.get_active_nm()
+    engine.manage_service(nm_service, "start")
+    
+    if os.path.exists("/usr/bin/nmcli"):
+        subprocess.run(["sudo", "nmcli", "networking", "on"], capture_output=True)
     print(t("eviltwin_cleanup_done"))
+
 
 
 # --- CAPTIVE PORTAL (Kimlik Doğrulama Sayfası) ---
@@ -90,9 +96,10 @@ if __name__ == "__main__":
 def start_evil_twin(iface, ssid, channel):
     ssid = radar.clean_ssid(ssid)
     print(t("eviltwin_prep", ssid=ssid))
-    cleanup()
-    subprocess.run(["sudo", "systemctl", "stop", "NetworkManager"])
+    nm_service = engine.get_active_nm()
+    engine.manage_service(nm_service, "stop")
     subprocess.run(["sudo", "killall", "wpa_supplicant"], capture_output=True)
+
     subprocess.run(["sudo", "rfkill", "unblock", "wifi"])
     time.sleep(1)
     subprocess.run(["sudo", "ifconfig", iface, "down"])

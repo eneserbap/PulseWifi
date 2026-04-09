@@ -20,7 +20,35 @@ def run_cmd(command_list):
     except Exception as e: return False, str(e)
 
 
+def get_service_manager():
+    """Sistemin servis yöneticisini (systemd, openrc, sysvinit) tespit eder."""
+    if os.path.exists("/usr/bin/systemctl"): return "systemd"
+    if os.path.exists("/sbin/openrc"): return "openrc"
+    if os.path.exists("/usr/sbin/service") or os.path.exists("/usr/sbin/invoke-rc.d"): return "sysvinit"
+    return "unknown"
+
+
+def manage_service(service, action):
+    """Servisleri (başlat, durdur, yeniden başlat) evrensel şekilde yönetir."""
+    mgr = get_service_manager()
+    if mgr == "systemd":
+        run_cmd(["sudo", "systemctl", action, service])
+    elif mgr == "openrc":
+        run_cmd(["sudo", "rc-service", service, action])
+    elif mgr == "sysvinit":
+        run_cmd(["sudo", "service", service, action])
+
+
+def get_active_nm():
+    """Sistemde aktif olan ağ yöneticisini (NetworkManager veya connman) bulur."""
+    _, out = run_cmd(["ps", "aux"])
+    if "NetworkManager" in out: return "NetworkManager"
+    if "connmand" in out: return "connman"
+    return "NetworkManager" # Varsayılan
+
+
 def is_monitor(iface):
+
     success, out = run_cmd(["iwconfig", iface])
     if success and "Mode:Monitor" in out: return True
     return False
@@ -47,10 +75,14 @@ def toggle_monitor(iface, mode="start"):
     else:
         print(t("engine_monitor_stop"))
         run_cmd(["sudo", "airmon-ng", "stop", iface])
-        run_cmd(["sudo", "systemctl", "restart", "NetworkManager"])
-        run_cmd(["sudo", "systemctl", "restart", "wpa_supplicant"])
+        
+        nm_service = get_active_nm()
+        manage_service(nm_service, "restart")
+        manage_service("wpa_supplicant", "restart")
+        
         eski_isim = iface.replace('mon', '')
         return True, t("engine_monitor_stop_success"), eski_isim
+
 
 
 def get_interfaces():
@@ -80,7 +112,12 @@ def change_mac(iface, mode="random"):
 
 # --- CLEANUP (Temizlik) ---
 def cleanup():
-    subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], capture_output=True)
-    subprocess.run(["sudo", "systemctl", "restart", "wpa_supplicant"], capture_output=True)
-    subprocess.run(["sudo", "nmcli", "networking", "on"], capture_output=True)
+    nm_service = get_active_nm()
+    manage_service(nm_service, "restart")
+    manage_service("wpa_supplicant", "restart")
+    
+    # nmcli varsa networking on yap (NetworkManager için)
+    if os.path.exists("/usr/bin/nmcli"):
+        subprocess.run(["sudo", "nmcli", "networking", "on"], capture_output=True)
     return True
+

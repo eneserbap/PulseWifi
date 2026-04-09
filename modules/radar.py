@@ -40,7 +40,12 @@ def get_signal_bar(dbm):
 def get_vendor(mac):
     """MAC adresinin ilk 6 hanesinden cihaz markasını çevrimdışı (offline) bulur."""
     prefix = mac.upper().replace(':', '')[:6]
-    paths = ['/usr/share/macchanger/OUI.list', '/var/lib/ieee-data/oui.txt']
+    paths = [
+        '/usr/share/macchanger/OUI.list', 
+        '/var/lib/ieee-data/oui.txt',
+        '/usr/share/hwdata/oui.txt', # Fedora/Arch path
+        '/usr/share/misc/oui.txt'    # Alternative path
+    ]
     for path in paths:
         if os.path.exists(path):
             try:
