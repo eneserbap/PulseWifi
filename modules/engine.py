@@ -41,10 +41,20 @@ def manage_service(service, action):
 
 def get_active_nm():
     """Sistemde aktif olan ağ yöneticisini (NetworkManager veya connman) bulur."""
+    # Daha kesin sonuç için pgrep kullanımı
+    success, _ = run_cmd(["pgrep", "-x", "NetworkManager"])
+    if success: return "NetworkManager"
+    
+    success, _ = run_cmd(["pgrep", "-x", "connmand"])
+    if success: return "connman"
+    
+    # Fallback: ps aux
     _, out = run_cmd(["ps", "aux"])
     if "NetworkManager" in out: return "NetworkManager"
     if "connmand" in out: return "connman"
-    return "NetworkManager" # Varsayılan
+    
+    return "NetworkManager"
+
 
 
 def is_monitor(iface):

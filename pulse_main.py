@@ -252,10 +252,12 @@ def main():
     finally:
         ifaces = engine.get_interfaces()
         if ifaces: 
-            gercek_isim = ifaces[0].replace('mon', '')
-            engine.toggle_monitor(ifaces[0], "stop")
+            iface_to_restore = ifaces[0]
+            iface_original = engine.get_real_iface(iface_to_restore).replace('mon', '')
+            engine.toggle_monitor(iface_to_restore, "stop")
             print(f"{Colors.BLUE}{t('main_restore_mac')}{Colors.END}")
-            engine.change_mac(gercek_isim, "reset")
+            engine.change_mac(iface_original, "reset")
         engine.cleanup()
+
 if __name__ == "__main__":
     main()

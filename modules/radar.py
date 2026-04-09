@@ -21,9 +21,10 @@ def scan_all(iface):
     """Ekranda canlı tarama yapar, sadece izleme içindir."""
     print(t("strike_scanning"))
     try:
-        subprocess.run(f"sudo airodump-ng {iface} -M", shell=True)
+        subprocess.run(["sudo", "airodump-ng", iface, "-M"])
     except KeyboardInterrupt:
         pass
+
 def get_signal_bar(dbm):
     """dBm değerini görsel bir bara çevirir: [####------]"""
     try:
@@ -66,61 +67,73 @@ def auto_scan_and_select(iface, scan_time=15):
     """Arka planda tarar ve bulunan ağları bir liste olarak döner."""
     print(t("strike_scanning"))
     
-    # Dosya temizliği (shell=True yerine güvenli yöntem)
+    pid = os.getpid()
+    prefix = f"/tmp/pulse_{pid}"
+    
+    # Eski kalıntıları temizle
     import glob
-    for f in glob.glob("/tmp/pulse_scan*"):
+    for f in glob.glob(f"{prefix}*"):
         try: os.remove(f)
         except: pass
 
-    # airodump-ng'yi arka planda başlat (& yerine Popen)
-    cmd = ["sudo", "airodump-ng", iface, "--output-format", "csv", "-w", "/tmp/pulse_scan"]
+    cmd = ["sudo", "airodump-ng", iface, "--output-format", "csv", "-w", prefix]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
     try:
         time.sleep(scan_time)
     finally:
-        # Süreci güvenli bir şekilde sonlandır (killall yerine terminate)
         proc.terminate()
-        try:
-            proc.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            proc.kill()
+        try: proc.wait(timeout=2)
+        except: proc.kill()
+
     networks = []
-    file_path = '/tmp/pulse_scan-01.csv'
+    file_path = f'{prefix}-01.csv'
     if not os.path.exists(file_path):
         return networks
+    
     try:
-        with open(file_path, 'r') as f:
-            lines = f.readlines()
-            for line in lines:
-                if line.strip() == '' or 'Station MAC' in line:
-                    continue
-                parts = line.split(',')
-                if len(parts) >= 14 and parts[0].strip() != 'BSSID':
-                    bssid = parts[0].strip()
-                    ch = parts[3].strip()
-                    dbm = parts[8].strip()
-                    essid = clean_ssid(parts[13])
+        import csv
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+            # AP'ler ve Station'lar arasındaki boşluktan böl
+            parts = content.split('\n\n')
+            if not parts: return []
+            
+            # CSV okuyucu ile parse et (virgüllü SSID'ler için kritik)
+            lines = parts[0].strip().splitlines()
+            if not lines: return []
+            
+            reader = csv.reader(lines)
+            headers = [h.strip() for h in next(reader)]
+            
+            for row in reader:
+                if len(row) < len(headers): continue
+                # Header'lara göre index bul
+                try:
+                    res = {headers[i]: row[i].strip() for i in range(len(headers))}
+                    bssid = res.get('BSSID')
+                    essid = clean_ssid(res.get('ESSID'))
                     if bssid and essid:
                         networks.append({
                             'bssid': bssid, 
-                            'ch': ch, 
-                            'dbm': dbm, 
+                            'ch': res.get('channel', '0'), 
+                            'dbm': res.get('Power', '-100'), 
                             'essid': essid,
                             'vendor': get_vendor(bssid) 
                         })
+                except: continue
     except Exception:
         pass
+
     def sort_by_signal(net):
         try:
-            val = int(net['dbm'].strip())
-            if val == -1 or val == 0:
-                return -100
-            return val
-        except:
-            return -100
+            val = int(str(net['dbm']).strip())
+            return val if val != -1 and val != 0 else -100
+        except: return -100
+
     networks.sort(key=sort_by_signal, reverse=True)
     return networks
+
 
 
 # --- TARGET LOCK (Hedefe Kilitlenme) ---

