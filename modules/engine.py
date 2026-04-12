@@ -2,7 +2,7 @@ from modules import i18n
 t = i18n.t
 import subprocess
 import os
-
+import time
 
 # --- COMMAND RUNNER (Komut Çalıştırıcı) ---
 def run_cmd(command_list):
@@ -31,12 +31,39 @@ def get_service_manager():
 def manage_service(service, action):
     """Servisleri (başlat, durdur, yeniden başlat) evrensel şekilde yönetir."""
     mgr = get_service_manager()
+    success = False
     if mgr == "systemd":
-        run_cmd(["sudo", "systemctl", action, service])
+        success, _ = run_cmd(["sudo", "systemctl", action, service])
     elif mgr == "openrc":
-        run_cmd(["sudo", "rc-service", service, action])
+        success, _ = run_cmd(["sudo", "rc-service", service, action])
     elif mgr == "sysvinit":
-        run_cmd(["sudo", "service", service, action])
+        success, _ = run_cmd(["sudo", "service", service, action])
+    return success
+
+
+def is_service_active(service):
+    """Bir servisin aktif olup olmadığını kontrol eder."""
+    mgr = get_service_manager()
+    if mgr == "systemd":
+        success, out = run_cmd(["sudo", "systemctl", "is-active", service])
+        return success and out.strip() == "active"
+    elif mgr == "openrc":
+        success, out = run_cmd(["sudo", "rc-service", service, "status"])
+        return success and "started" in out.lower()
+    elif mgr == "sysvinit":
+        success, out = run_cmd(["sudo", "service", service, "status"])
+        return success and ("running" in out.lower() or "active" in out.lower())
+    return False
+
+
+def set_ipv6(iface, state):
+    """Belirli bir arayüz için IPv6'yı etkinleştirir veya devre dışı bırakır."""
+    val = "0" if state else "1"
+    run_cmd(["sudo", "sysctl", "-w", f"net.ipv6.conf.{iface}.disable_ipv6={val}"])
+    run_cmd(["sudo", "sysctl", "-w", f"net.ipv6.conf.all.disable_ipv6={val}"])
+    run_cmd(["sudo", "sysctl", "-w", f"net.ipv6.conf.default.disable_ipv6={val}"])
+
+
 
 
 def get_active_nm():
@@ -58,15 +85,18 @@ def get_active_nm():
 
 
 def is_monitor(iface):
+    # Modern 'iw' komutu (Daha stabil ve yetki sorunu yaşatmaz)
+    success, out = run_cmd(["sudo", "iw", "dev", iface, "info"])
+    if success and "type monitor" in out.lower(): return True
 
-    success, out = run_cmd(["iwconfig", iface])
-    if success and "Mode:Monitor" in out: return True
+    # Eski 'iwconfig' komutu (sudo eklendi, boşluklar silindi, küçük harfe çevrildi)
+    success, out = run_cmd(["sudo", "iwconfig", iface])
+    if success and "mode:monitor" in out.lower().replace(" ", ""): return True
+    
     return False
 
 
 def get_real_iface(iface):
-    if os.path.exists('/sys/class/net/' + iface + 'mon'):
-        return iface + 'mon'
     return iface
 
 
@@ -75,24 +105,58 @@ def toggle_monitor(iface, mode="start"):
     if mode == "start":
         if not is_monitor(iface):
             print(t("engine_monitor_prep", iface=iface))
-            run_cmd(["sudo", "airmon-ng", "check", "kill"])
-            run_cmd(["sudo", "airmon-ng", "start", iface])
-        yeni_isim = get_real_iface(iface)
-        if is_monitor(yeni_isim):
-            return True, t("engine_monitor_start_success", yeni_isim=yeni_isim), yeni_isim
+            
+            # 1. NetworkManager'dan ayır
+            run_cmd(["sudo", "nmcli", "device", "set", iface, "managed", "no"])
+            run_cmd(["sudo", "rfkill", "unblock", "wifi"])
+            time.sleep(1) # Sistemin bunu algılaması için bekle
+            
+            # 2. Kartı kapat ve üzerindeki IP adreslerini zorla temizle (Kilit nokta!)
+            run_cmd(["sudo", "ip", "link", "set", iface, "down"])
+            run_cmd(["sudo", "ip", "addr", "flush", "dev", iface])
+            time.sleep(1) # Kartın tamamen kapanıp boşa çıkması için bekle
+            
+            # 3. Önce güncel yöntem (iw) ile monitör moda almayı dene
+            success, _ = run_cmd(["sudo", "iw", "dev", iface, "set", "type", "monitor"])
+            
+            # 4. Eğer 'iw' başarısız olursa, eski yöntem (iwconfig) ile zorla
+            if not success:
+                run_cmd(["sudo", "iwconfig", iface, "mode", "monitor"])
+                
+            time.sleep(1) # Modun oturmasını bekle
+            
+            # 5. Kartı tekrar ayağa kaldır
+            run_cmd(["sudo", "ip", "link", "set", iface, "up"])
+            
+            # 6. TxPower (Sinyal Gücü) Kilidini Kır (Bolivya Bölgesi + 30 dBm)
+            run_cmd(["sudo", "iw", "reg", "set", "BO"])
+            time.sleep(0.5)
+            run_cmd(["sudo", "iwconfig", iface, "txpower", "30"])
+        
+        if is_monitor(iface):
+            return True, t("engine_monitor_start_success", yeni_isim=iface), iface
         else:
-            return False, t("engine_monitor_start_fail"), yeni_isim
+            return False, f"[!] HATA: {iface} monitör moda geçemedi. Terminale 'sudo dmesg | tail' yazarak asıl sorunu görebilirsin.", iface
     else:
         print(t("engine_monitor_stop"))
-        run_cmd(["sudo", "airmon-ng", "stop", iface])
         
-        nm_service = get_active_nm()
-        manage_service(nm_service, "restart")
-        manage_service("wpa_supplicant", "restart")
+        # 1. Kartı kapat ve IP temizle
+        run_cmd(["sudo", "ip", "link", "set", iface, "down"])
+        run_cmd(["sudo", "ip", "addr", "flush", "dev", iface])
+        time.sleep(1)
         
-        eski_isim = iface.replace('mon', '')
-        return True, t("engine_monitor_stop_success"), eski_isim
-
+        # 2. Normal (Managed) moda döndür
+        success, _ = run_cmd(["sudo", "iw", "dev", iface, "set", "type", "managed"])
+        if not success:
+            run_cmd(["sudo", "iwconfig", iface, "mode", "managed"])
+            
+        time.sleep(1)
+        
+        # 3. Kartı ayağa kaldır ve NetworkManager'a geri ver
+        run_cmd(["sudo", "ip", "link", "set", iface, "up"])
+        run_cmd(["sudo", "nmcli", "device", "set", iface, "managed", "yes"])
+        
+        return True, t("engine_monitor_stop_success"), iface
 
 
 def get_interfaces():
@@ -122,12 +186,13 @@ def change_mac(iface, mode="random"):
 
 # --- CLEANUP (Temizlik) ---
 def cleanup():
-    nm_service = get_active_nm()
-    manage_service(nm_service, "restart")
-    manage_service("wpa_supplicant", "restart")
-    
-    # nmcli varsa networking on yap (NetworkManager için)
+    # Programdan çıkarken TÜM Wi-Fi kartlarını donanımsal olarak serbest bırak
+    ifaces = get_interfaces()
     if os.path.exists("/usr/bin/nmcli"):
-        subprocess.run(["sudo", "nmcli", "networking", "on"], capture_output=True)
+        for iface in ifaces:
+            # Tüm kartları zorla NetworkManager'a geri ver
+            subprocess.Popen(["sudo", "nmcli", "device", "set", iface, "managed", "yes"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Kartı ayağa kaldır
+            subprocess.Popen(["sudo", "ip", "link", "set", iface, "up"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
     return True
-

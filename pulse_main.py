@@ -11,6 +11,8 @@ if os.name == 'posix' and os.geteuid() != 0:
 class Colors:
     BLUE, GREEN, YELLOW, RED, BOLD, END, CYAN = '\033[94m', '\033[92m', '\033[93m', '\033[91m', '\033[1m', '\033[0m', '\033[96m'
 
+USED_IFACES = set()
+
 
 # --- BANNER/UI ELEMENTS (Arayüz Elemanları) ---
 def banner():
@@ -52,7 +54,10 @@ def select_interface():
         print(f"    {Colors.RED}{t('no_wifi_card').strip()}{Colors.END}"); time.sleep(2); return None
     print(f"\n    {Colors.BOLD}{t('existing_wifi_cards').strip()}{Colors.END}")
     for i, name in enumerate(ifaces): print(f"    {Colors.YELLOW}[{i}]{Colors.END} {name}")
-    try: return ifaces[int(input(f"\n    {Colors.CYAN}{t('iface_prompt').strip()}{Colors.END} "))]
+    try: 
+        sel = ifaces[int(input(f"\n    {Colors.CYAN}{t('iface_prompt').strip()}{Colors.END} "))]
+        USED_IFACES.add(sel)
+        return sel
     except (ValueError, IndexError): return None
 
 
@@ -101,24 +106,36 @@ def radar_ui():
         if sub == "1":
             iface = select_interface()
             if iface:
-                _, _, iface = engine.toggle_monitor(iface, "start")
+                success, msg, iface = engine.toggle_monitor(iface, "start")
+                if not success:
+                    print(f"    {Colors.RED}{msg}{Colors.END}")
+                    time.sleep(3)
+                    continue
                 found_nets = radar.auto_scan_and_select(iface) 
                 if not found_nets: print(f"    {Colors.RED}{t('radar_no_nets')}{Colors.END}"); time.sleep(2); continue
                 print(f"\n    {Colors.CYAN}{t('radar_table_header')}{Colors.END}")
-                print("    " + "-"*76)
+                print("    " + "-"*84)
                 for i, net in enumerate(found_nets):
                     bar = radar.get_signal_bar(net['dbm'])
-                    print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:18]:<20} {net['vendor']:<12} {net['bssid']:<18} {net['ch']}")
+                    freq = net.get('freq_label', '')
+                    print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:18]:<20} {freq:<18} {net['vendor']:<12} {net['bssid']:<18} Ch:{net['ch']}")
                 secim = input(t("radar_target_prompt", max_id=len(found_nets)-1))
                 if secim.isdigit() and int(secim) < len(found_nets):
                     target = found_nets[int(secim)]
                     print(t("radar_target_selected", essid=target['essid'], vendor=target['vendor']))
-                    dosya_adi = input(t("radar_save_prompt"))
+                    dosya_adi = input(t("radar_save_prompt")).strip()
+                    if not dosya_adi: dosya_adi = f"scan_{target['bssid'].replace(':', '')}"
                     radar.target_lock(iface, target['bssid'], target['ch'], dosya_adi)
                 else: print(t("radar_invalid_selection")); time.sleep(1.5)
         elif sub == "2":
             iface = select_interface()
-            if iface: _, _, iface = engine.toggle_monitor(iface, "start"); radar.scan_all(iface)
+            if iface:
+                success, msg, iface = engine.toggle_monitor(iface, "start")
+                if not success:
+                    print(f"    {Colors.RED}{msg}{Colors.END}")
+                    time.sleep(3)
+                    continue
+                radar.scan_all(iface)
         elif sub == "0": break
 
 
@@ -140,59 +157,84 @@ def strike_ui():
         if sub in ["1", "2", "5", "6"]:
             iface = select_interface()
             if not iface: continue
-            if sub == "5" and iface.endswith("mon"):
+            if sub == "5" and engine.is_monitor(iface):
                 print(f"    {Colors.RED}{t('strike_evil_twin_error')}{Colors.END}")
                 print(f"    {Colors.YELLOW}{t('strike_evil_twin_hint')}{Colors.END}"); time.sleep(3); continue
             if sub in ["1", "2"]:
-                _, _, iface = engine.toggle_monitor(iface, "start")
+                success, msg, iface = engine.toggle_monitor(iface, "start")
+                if not success:
+                    print(f"    {Colors.RED}{msg}{Colors.END}")
+                    time.sleep(3)
+                    continue
             print(f"\n    {Colors.CYAN}[*] Hedef seçimi için etraf taranıyor...{Colors.END}")
             if sub == "5":
-                _, _, mon_iface = engine.toggle_monitor(iface, "start")
-                found_nets = radar.auto_scan_and_select(mon_iface)
-                engine.toggle_monitor(mon_iface, "stop")
+                success, msg, iface = engine.toggle_monitor(iface, "start")
+                if not success:
+                    print(f"    {Colors.RED}{msg}{Colors.END}")
+                    time.sleep(3)
+                    continue
+                USED_IFACES.add(iface)
+                print(f"    {Colors.CYAN}[*] Fedora için derin tarama yapılıyor (20sn)...{Colors.END}")
+                found_nets = radar.auto_scan_and_select(iface, scan_time=20)
+                
+                if not found_nets:
+                    print(f"    {Colors.RED}[!] Hiçbir ağ bulunamadı! Kartın kapsama alanında olduğundan emin ol.{Colors.END}")
+                    time.sleep(3)
+                    continue
+                # DÜZELTME: Kart taramadan sonra kapanmalı değil, Evil Twin modülü yönetecek
             else:
                 found_nets = radar.auto_scan_and_select(iface) 
             if not found_nets: continue
             print(f"\n    {Colors.CYAN}{t('strike_table_header')}{Colors.END}")
+            print("    " + "-"*84)
             for i, net in enumerate(found_nets):
                 bar = radar.get_signal_bar(net['dbm'])
-                print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:23]:<25} {net['bssid']:<20} {net['ch']}")
-            secim = input(t("strike_target_prompt"))
+                freq = net.get('freq_label', '')
+                print(f"    {Colors.YELLOW}[{i}]{Colors.END} {bar:<15} {net['essid'][:18]:<20} {freq:<18} {net['bssid']:<20} Ch:{net['ch']}")
+            secim = input(t("strike_target_prompt")).strip()
             if secim.isdigit() and int(secim) < len(found_nets):
                 target = found_nets[int(secim)]
                 if sub in ["1", "2"]:
-                    engine.run_cmd(["sudo", "iwconfig", iface, "channel", target['ch']])
-                    client = input(t("strike_client_prompt")) if sub == "2" else None
-                    timer_input = input(t("strike_timer_prompt"))
+                    client = input(t("strike_client_prompt")).strip() if sub == "2" else None
+                    if not client: client = None
+                    timer_input = input(t("strike_timer_prompt")).strip()
                     timer = int(timer_input) if timer_input.isdigit() else 0
-                    strike.pulse_kick(iface, target['bssid'], client, timer)
+                    strike.pulse_kick(iface, target['bssid'], client, timer, channel=target['ch'])
                     input(t("strike_press_enter"))
                 elif sub == "5":
                     eviltwin.start_evil_twin(iface, target['essid'], target['ch'])
                     input(t("strike_press_enter"))
                 elif sub == "6":
-                    strike.mesh_strike(iface, target['essid'])
+                    strike.mesh_strike(iface, target['essid'], channel=target['ch'])
                     input(t("strike_press_enter"))
             else:
-                    if sub == "6":
-                        ssid = input(t("strike_mesh_prompt"))
-                        if ssid:
-                            strike.mesh_strike(iface, ssid)
-                            input(t("strike_press_enter"))
-                        else:
-                            print(f"    {Colors.RED}{t('radar_invalid_selection')}{Colors.END}"); time.sleep(1.5)
+                if sub == "6":
+                    ssid = input(t("strike_mesh_prompt")).strip()
+                    if ssid:
+                        strike.mesh_strike(iface, ssid)
+                        input(t("strike_press_enter"))
                     else:
-                        print(t("radar_invalid_selection")); time.sleep(1.5)
+                        print(f"    {Colors.RED}{t('radar_invalid_selection')}{Colors.END}"); time.sleep(1.5)
+                else:
+                    print(t("radar_invalid_selection")); time.sleep(1.5)
         elif sub == "3":
             iface = select_interface()
             if iface:
-                _, _, iface = engine.toggle_monitor(iface, "start")
+                success, msg, iface = engine.toggle_monitor(iface, "start")
+                if not success:
+                    print(f"    {Colors.RED}{msg}{Colors.END}")
+                    time.sleep(3)
+                    continue
                 strike.beacon_spam(iface)
                 input(t("strike_press_enter"))
         elif sub == "4":
             iface = select_interface()
             if iface:
-                _, _, iface = engine.toggle_monitor(iface, "start")
+                success, msg, iface = engine.toggle_monitor(iface, "start")
+                if not success:
+                    print(f"    {Colors.RED}{msg}{Colors.END}")
+                    time.sleep(3)
+                    continue
                 strike.chaos_mode(iface)
                 input(t("strike_press_enter"))
         elif sub == "0": break
@@ -212,7 +254,8 @@ def decrypt_ui():
         menu_box(t("menu_decrypt_title"), opts)
         sub = input(f"\n    {Colors.BOLD}{t('decrypt_prompt').strip()}{Colors.END} ")
         if sub in ["1", "2", "3", "4"]:
-            cap = input(t("decrypt_cap_prompt"))
+            cap = input(t("decrypt_cap_prompt")).strip()
+            if not cap: continue
             if sub == "1": 
                 wl = input(t("decrypt_wl_prompt")) or "/usr/share/wordlists/rockyou.txt"
                 decrypt.wordlist_attack(cap, wl)
@@ -252,12 +295,14 @@ def main():
     except KeyboardInterrupt: print(f"{Colors.RED}{t('main_emergency_exit')}{Colors.END}")
     finally:
         ifaces = engine.get_interfaces()
-        if ifaces: 
-            iface_to_restore = ifaces[0]
-            iface_original = engine.get_real_iface(iface_to_restore).replace('mon', '')
-            engine.toggle_monitor(iface_to_restore, "stop")
-            print(f"{Colors.BLUE}{t('main_restore_mac')}{Colors.END}")
-            engine.change_mac(iface_original, "reset")
+        for iface in ifaces:
+            base_name = iface.replace("mon", "")
+            if iface in USED_IFACES or base_name in USED_IFACES or (base_name+"mon") in USED_IFACES:
+                if engine.is_monitor(iface):
+                    engine.toggle_monitor(iface, "stop")
+                engine.change_mac(iface, "reset")
+        
+        print(f"{Colors.BLUE}{t('main_restore_mac')}{Colors.END}")
         engine.cleanup()
 
 if __name__ == "__main__":

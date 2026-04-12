@@ -1,11 +1,11 @@
 import json
 import os
-import locale
 import sys
+
 def get_system_language():
     try:
-        lang, _ = locale.getdefaultlocale()
-        if lang and lang.startswith('tr'):
+        lang = os.environ.get('LANG', 'en')
+        if lang and lang.lower().startswith('tr'):
             return 'tr'
         return 'en'
     except Exception:

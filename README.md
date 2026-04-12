@@ -9,7 +9,22 @@
 
 **[English](#english) | [Türkçe](#türkçe)**
 
-PulseWifi is an advanced, automated, and modular TUI (Text User Interface) tool designed for Wi-Fi security auditing, penetration testing, and vulnerability analysis.
+# PulseWifi v1.2 - Universal Security Suite
+
+PulseWifi is a modern, high-performance security suite designed for deep WiFi penetration testing and network security auditing. Optimized for universal Linux compatibility (Fedora, Arch, Debian/Ubuntu), it features professional modules for network recon, deauth attacks, and aggressive captive portal redirection.
+
+### 🚀 Key Features (v1.2)
+- **Universal Engine**: Auto-detection of package managers and network services (Systemd/OpenRC).
+- **Hardened Evil Twin**: Aggressive captive portal redirection with pure Python (No Flask needed).
+- **Fedora Ready**: Specialized hooks for systemd-resolved, Firewalld, and NFTables.
+- **Deep Recon**: PID-based temporary file handling and robust CSV parsing for complex SSIDs.
+- **i18n Support**: Full localization support for Turkish and English.
+
+### 📋 Requirements
+- **OS**: Linux (Fedora, Arch, Debian, Kali, Ubuntu etc.)
+- **Permissions**: Root (sudo) access required.
+- **Dependencies**: 
+    - aircrack-ng, mdk4, macchanger, hashcat, hcxtools, hostapd, dnsmasq, psmisc, nftables
 
 > ⚠️ **Disclaimer:** This tool is strictly for educational purposes and ethical hacking. The authors are not responsible for any misuse or legal actions. Always have permission before testing any network!
 
@@ -20,7 +35,7 @@ PulseWifi is an advanced, automated, and modular TUI (Text User Interface) tool 
 
 <h2 id="english">🇬🇧 English Readme</h2>
 
-PulseWifi combines the power of tools like `aircrack-ng`, `mdk3`, `hashcat`, and `macchanger` down to a single, interactive, and aesthetic dashboard. It automatically manages your adapters, cleans up residual configurations, and prevents connectivity loss after your tasks are done.
+PulseWifi combines the power of tools like `aircrack-ng`, `mdk4`, `hashcat`, and `macchanger` down to a single, interactive, and aesthetic dashboard. It automatically manages your adapters, cleans up residual configurations, and prevents connectivity loss after your tasks are done.
 
 <img width="970" height="559" alt="image" src="https://github.com/user-attachments/assets/469cad02-d455-49de-960e-059fc7d6c434" />
 
@@ -50,7 +65,7 @@ sudo python3 pulse_main.py
 
 <h2 id="türkçe">🇹🇷 Türkçe Readme</h2>
 
-PulseWifi; `aircrack-ng`, `mdk3`, `hashcat` ve `macchanger` gibi endüstri standardı araçları tek bir ekranda toplayan profesyonel ve TUI (Metin Tabanlı Arayüz) destekli bir siber güvenlik Wi-Fi otomasyon aracıdır.
+PulseWifi; `aircrack-ng`, `mdk4`, `hashcat` ve `macchanger` gibi endüstri standardı araçları tek bir ekranda toplayan profesyonel ve TUI (Metin Tabanlı Arayüz) destekli bir siber güvenlik Wi-Fi otomasyon aracıdır.
 
 Saldırı veya dinleme işleminden sonra ağ ayarlarınızı, servislerinizi (NetworkManager vb.) ve MAC adresinizi otomatik olarak orijinal haline getirerek geride iz bırakmamanızı sağlar.
 <img width="945" height="563" alt="image" src="https://github.com/user-attachments/assets/2f8ee900-23e1-4abb-9c59-e225a6ee3bac" />
